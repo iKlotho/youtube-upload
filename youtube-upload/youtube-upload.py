@@ -31,6 +31,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
+VERSION = "0.0.1"
 DEVELOPER_KEY = 'AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img'
 
 class Youtube:
@@ -84,7 +85,7 @@ def main_upload(args):
     usage = """Usage: %prog [OPTIONS] EMAIL PASSWORD FILE TITLE DESCRIPTION CATEGORY KEYWORDS
 
     Upload videos to youtube."""
-    parser = optparse.OptionParser(usage)
+    parser = optparse.OptionParser(usage, version=VERSION)
     parser.add_option('-c', '--get-categories', dest='get_categories',
           action="store_true", default=False, help='Show categories')
     options, args0 = parser.parse_args(args)
