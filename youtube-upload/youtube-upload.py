@@ -19,10 +19,12 @@ Simple script to upload videos to Youtube.
 Dependencies: python-gdata (>= 1.2.4)
 """
 
+import os
 import re
 import sys
 import urllib
 import optparse
+import subprocess
 from xml.etree import ElementTree
 
 # python-gdata
@@ -33,6 +35,32 @@ import gdata.youtube.service
 
 VERSION = "0.0.2"
 DEVELOPER_KEY = 'AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img'
+
+def run(command, inputdata=None, **kwargs):
+    """Run a command and return standard output"""
+    print command
+    popen = subprocess.Popen(command, **kwargs)
+    outputdata, errdata = popen.communicate(inputdata)
+    return outputdata, errdata
+
+def ffmpeg(*args):
+    outputdata, errdata = run(["ffmpeg"] + list(args), stderr=subprocess.PIPE)
+    return errdata
+
+def split_video(video_path, length):
+    errdata = ffmpeg("-i", video_path)
+    strduration = re.search(r"Duration:\s+(.*?),", errdata, re.MULTILINE).group(1)
+    duration = sum(factor*float(x) for (x, factor) in zip(strduration.split(":"), (60*60, 60, 1)))
+    base, extension = os.path.splitext(os.path.basename(video_path))
+    offsets = xrange(0, int(duration), length)
+    if len(offsets) == 1:
+        yield video_path 
+    else:
+        for index, offset in enumerate(offsets):
+            output_path = "%s-%d%s" % (base, index+1, extension)
+            ffmpeg("-y", "-i", video_path, "-sameq", "-ss", str(offset), 
+                "-t", str(length), output_path)
+            yield output_path
 
 class Youtube:
     """Interface the Youtube API."""
@@ -55,7 +83,7 @@ class Youtube:
         """Upload a video to youtube along with some metadata."""
         assert self.service, "Youtube service object is not set"
         if category not in self.categories:
-            valid = ", ".join(self.categories.keys())
+            valid = " ".join(self.categories.keys())
             raise ValueError("Invalid category '%s' (accepted: %s)" % (category, valid))
                  
         media_group = gdata.media.Group(
@@ -85,13 +113,12 @@ class Youtube:
     @classmethod
     def get_categories(cls):
         """Return categories dictionary with pairs (term, label)."""
-        def _pairs(xml):
-            for element in xml:
-                if any(str(x.tag).endswith("deprecated") for x in element.getchildren()):
-                    continue
-                yield (element.get("term"), element.get("label"))            
+        def _get_pair(element):
+            if all(not(str(x.tag).endswith("deprecated")) for x in element.getchildren()):
+                return (element.get("term"), element.get("label"))            
         xmldata = urllib.urlopen(cls.CATEGORIES_SCHEME).read()
-        return dict(_pairs(ElementTree.XML(xmldata)))
+        xml = ElementTree.XML(xmldata)
+        return dict(filter(bool, map(_get_pair, xml)))
 
 def main_upload(args):
     """Upload video to Youtube."""
@@ -104,7 +131,7 @@ def main_upload(args):
     options, args0 = parser.parse_args(args)
     
     if options.get_categories:
-        print ", ".join(Youtube.get_categories().keys())
+        print " ".join(Youtube.get_categories().keys())
         return 0
     elif len(args0) != 7:
         parser.print_usage()
@@ -112,10 +139,16 @@ def main_upload(args):
     
     email, password, video_file, title, description, category, skeywords = args0    
     yt = Youtube(email, password)
-    keywords = filter(bool, re.split('[,;\s]+', skeywords)) 
-    entry = yt.upload_video(video_file, title, description, category, keywords)
-    url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
-    print url
-    
+    keywords = filter(bool, re.split('[,;\s]+', skeywords))
+    videos = list(split_video(video_file, 60*9))
+    for index, video_path in enumerate(videos):
+        if len(videos) > 1:
+            complete_title = "%s (%d/%d)" % (title, index+1, len(videos))
+        else:
+            complete_title = title
+        entry = yt.upload_video(video_file, complete_title, description, category, keywords)
+        url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
+        print url
+   
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
