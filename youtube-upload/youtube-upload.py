@@ -44,7 +44,7 @@ def debug(obj):
 
 def run(command, inputdata=None, **kwargs):
     """Run a command and return standard output"""
-    debug(command)
+    debug("run: %s" % " ".join(command))
     popen = subprocess.Popen(command, **kwargs)
     outputdata, errdata = popen.communicate(inputdata)
     return outputdata, errdata
@@ -54,21 +54,36 @@ def ffmpeg(*args):
     outputdata, errdata = run(["ffmpeg"] + list(args), stderr=subprocess.PIPE)
     return errdata
 
-def split_video(video_path, length):
-    """Split video in chunks (length seconds)."""
+def get_video_duration(video_path):
+    """Return video duration in seconds."""
     errdata = ffmpeg("-i", video_path)
-    strduration = re.search(r"Duration:\s+(.*?),", errdata, re.MULTILINE).group(1)
-    duration = sum(factor*float(x) for (x, factor) in zip(strduration.split(":"), (60*60, 60, 1)))
+    strduration = re.search(r"Duration:\s+(.*?),", errdata).group(1)
+    return sum(factor*float(x) for (x, factor) in 
+        zip(strduration.split(":"), (60*60, 60, 1)))
+
+def split_video(video_path, length, max_size=None, chunk_rewind=0):
+    """Split video in chunks (length seconds)."""
+    total_duration = get_video_duration(video_path)
     base, extension = os.path.splitext(os.path.basename(video_path))
-    offsets = xrange(0, int(duration), length)
-    if len(offsets) == 1:
-        yield video_path 
-    else:
-        for index, offset in enumerate(offsets):
-            output_path = "%s-%d%s" % (base, index+1, extension)
-            ffmpeg("-y", "-i", video_path, "-sameq", "-ss", str(offset), 
-                "-t", str(length), output_path)
-            yield output_path
+    offset, index = 0, 1
+    debug("split_video: %s, total_duration=%02.f" % (video_path, total_duration))
+    while 1:
+        debug("split_video: index=%d, offset=%s" % (index, offset))
+        output_path = "%s-%d.avi" % (base, index)
+        args = ["-y", "-i", video_path]
+        if max_size:
+            args += ["-fs", str(int(max_size))]
+        args += ["-sameq", "-ss", str(offset), "-t", str(length), output_path]
+        ffmpeg(*args)
+        yield output_path
+        duration = get_video_duration(output_path)
+        if offset + duration >= total_duration:
+            break 
+        offset += duration - chunk_rewind
+        index += 1
+
+def split_youtube_video(video_path):
+    return split_video(video_path, 60*9, max_size=99e6, chunk_rewind=10)
 
 class Youtube:
     """Interface the Youtube API."""
@@ -127,7 +142,7 @@ class Youtube:
         xmldata = urllib.urlopen(cls.CATEGORIES_SCHEME).read()
         xml = ElementTree.XML(xmldata)
         return dict(filter(bool, map(_get_pair, xml)))
-
+    
 def main_upload(args):
     """Upload video to Youtube."""
     usage = """Usage: %prog [OPTIONS] EMAIL PASSWORD FILE TITLE DESCRIPTION CATEGORY KEYWORDS
@@ -136,11 +151,18 @@ def main_upload(args):
     parser = optparse.OptionParser(usage, version=VERSION)
     parser.add_option('-c', '--get-categories', dest='get_categories',
           action="store_true", default=False, help='Show categories')
+    parser.add_option('-s', '--split-only', dest='split_only',
+          action="store_true", default=False, help='Show videos without uploading them')
     options, args0 = parser.parse_args(args)
     
     if options.get_categories:
         print " ".join(Youtube.get_categories().keys())
-        return 0
+        return 0    
+    if options.split_only:
+        video_file, = args0
+        for path in list(split_youtube_video(video_file)):
+            print path
+        return 0    
     elif len(args0) != 7:
         parser.print_usage()
         return 1
@@ -148,7 +170,7 @@ def main_upload(args):
     email, password, video_file, title, description, category, skeywords = args0    
     yt = Youtube(email, password)
     keywords = filter(bool, re.split('[,;\s]+', skeywords))
-    videos = list(split_video(video_file, 60*9))
+    videos = list(split_youtube_video(video_file))
     for index, video_path in enumerate(videos):
         if len(videos) > 1:
             complete_title = "%s (%d/%d)" % (title, index+1, len(videos))
@@ -158,6 +180,5 @@ def main_upload(args):
         url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
         print url
    
-
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
