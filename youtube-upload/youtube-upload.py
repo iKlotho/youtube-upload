@@ -69,7 +69,7 @@ def split_video(video_path, length, max_size=None, chunk_rewind=0):
     debug("split_video: %s, total_duration=%02.f" % (video_path, total_duration))
     while 1:
         debug("split_video: index=%d, offset=%s" % (index, offset))
-        output_path = "%s-%d.avi" % (base, index)
+        output_path = "%s-%d.mkv" % (base, index)
         args = ["-y", "-i", video_path]
         if max_size:
             args += ["-fs", str(int(max_size))]
@@ -129,7 +129,7 @@ class Youtube:
         post_url, token = self.service.GetFormUploadToken(video_entry)
         
         # If you want to use a POST upload instead:
-        # curl -F token=token file=@file_to_send.avi post_url
+        # curl -F token=token file=@file_to_send post_url
          
         return self.service.InsertVideoEntry(video_entry, path)
 
