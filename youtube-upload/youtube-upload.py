@@ -21,12 +21,12 @@ import re
 import sys
 import urllib
 import optparse
+from xml.etree import ElementTree
 
 import gdata.media
 import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
-from xml.etree import ElementTree
 
 DEVELOPER_KEY = 'AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img'
 
@@ -61,9 +61,11 @@ class Youtube:
                 label=self.categories[category],
                 scheme=self.CATEGORIES_SCHEME),
             player=None)
-        where = gdata.geo.Where()
-        if location:
+        if location:            
+            where = gdata.geo.Where()
             where.set_location(location)
+        else: 
+            where = None
         video_entry = gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where)
         return self.service.InsertVideoEntry(video_entry, path)
 
