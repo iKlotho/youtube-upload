@@ -15,6 +15,8 @@
 
 """
 Simple script to upload videos to Youtube.
+
+Dependencies: python-gdata (>= 1.2.4)
 """
 
 import re
@@ -23,6 +25,7 @@ import urllib
 import optparse
 from xml.etree import ElementTree
 
+# python-gdata
 import gdata.media
 import gdata.geo
 import gdata.youtube
