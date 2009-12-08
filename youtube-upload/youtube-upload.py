@@ -31,7 +31,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 DEVELOPER_KEY = 'AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img'
 
 class Youtube:

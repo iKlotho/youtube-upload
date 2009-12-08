@@ -1,5 +1,12 @@
+youtube-upload (0.0.2) unstable; urgency=medium
+
+  * Detect deprecated categories.
+  * Validate meta-data before uploading the video.
+
+ --  <tokland@gmail.com>  Tue, 08 Dec 2009 19:49:02 +0100
+
 youtube-upload (0.0.1) unstable; urgency=high
  
-  * First release
+  * First release.
 
  -- Arnau Sanchez <tokland@gmail.com>  Sat, 24 Jan 2009 12:17:21 +0200
