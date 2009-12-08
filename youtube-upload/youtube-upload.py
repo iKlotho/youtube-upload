@@ -54,7 +54,9 @@ class Youtube:
     def upload_video(self, path, title, description, category, keywords=None, location=None):
         """Upload a video to youtube along with some metadata."""
         assert self.service, "Youtube service object is not set"
-        assert category in self.categories, "Category not found: %s" % category
+        if category not in self.categories:
+            valid = ", ".join(self.categories.keys())
+            raise ValueError("Invalid category '%s' (accepted: %s)" % (category, valid))
                  
         media_group = gdata.media.Group(
             title=gdata.media.Title(text=title),
@@ -71,14 +73,25 @@ class Youtube:
         else: 
             where = None
         video_entry = gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where)
+        
+        # Get response only as a validation mechanism
+        post_url, token = self.service.GetFormUploadToken(video_entry)
+        
+        # If you want to use a POST upload instead:
+        # curl -F token=token file=@file_to_send.avi post_url
+         
         return self.service.InsertVideoEntry(video_entry, path)
 
     @classmethod
     def get_categories(cls):
         """Return categories dictionary with pairs (term, label)."""
+        def _pairs(xml):
+            for element in xml:
+                if any(str(x.tag).endswith("deprecated") for x in element.getchildren()):
+                    continue
+                yield (element.get("term"), element.get("label"))            
         xmldata = urllib.urlopen(cls.CATEGORIES_SCHEME).read()
-        xml = ElementTree.XML(xmldata)    
-        return dict((el.get("term"), el.get("label")) for el in xml)
+        return dict(_pairs(ElementTree.XML(xmldata)))
 
 def main_upload(args):
     """Upload video to Youtube."""
@@ -97,7 +110,7 @@ def main_upload(args):
         parser.print_usage()
         return 1
     
-    email, password, video_file, title, description, category, skeywords = args0
+    email, password, video_file, title, description, category, skeywords = args0    
     yt = Youtube(email, password)
     keywords = filter(bool, re.split('[,;\s]+', skeywords)) 
     entry = yt.upload_video(video_file, title, description, category, keywords)
