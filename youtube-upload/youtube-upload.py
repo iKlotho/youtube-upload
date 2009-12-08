@@ -36,18 +36,26 @@ import gdata.youtube.service
 VERSION = "0.0.2"
 DEVELOPER_KEY = 'AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img'
 
+
+def debug(obj):
+    """Write obj to standard error"""
+    sys.stderr.write("--- " + str(obj)+"\n")
+    sys.stderr.flush()
+
 def run(command, inputdata=None, **kwargs):
     """Run a command and return standard output"""
-    print command
+    debug(command)
     popen = subprocess.Popen(command, **kwargs)
     outputdata, errdata = popen.communicate(inputdata)
     return outputdata, errdata
 
 def ffmpeg(*args):
+    """Run ffmpeg command and return standard error output."""
     outputdata, errdata = run(["ffmpeg"] + list(args), stderr=subprocess.PIPE)
     return errdata
 
 def split_video(video_path, length):
+    """Split video in chunks (length seconds)."""
     errdata = ffmpeg("-i", video_path)
     strduration = re.search(r"Duration:\s+(.*?),", errdata, re.MULTILINE).group(1)
     duration = sum(factor*float(x) for (x, factor) in zip(strduration.split(":"), (60*60, 60, 1)))
@@ -150,5 +158,6 @@ def main_upload(args):
         url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
         print url
    
+
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
