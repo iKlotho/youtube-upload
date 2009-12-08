@@ -1,0 +1,34 @@
+= Introduction =
+
+_Youtube-upload is a simple command-line script to upload videos to youtube along with some metadata.
+
+= Dependencies =
+
+To run youtube-upload you will need:
+
+  * python (>= 2.5)
+  * python-gdata (>= 1.2.4)
+
+= Download & Install =
+
+  * [http://code.google.com/p/youtube-upload/downloads/list From sources]:
+
+{{{
+$ wget http://youtube-upload.googlecode.com/files/youtube-upload-VERSION.tgz
+$ tar xvzf youtube-upload-VERSION.tgz
+$ cd youtube-upload-VERSION
+$ sudo cp youtube-upload/youtube-upload.py /usr/local/bin/youtube-upload
+$ sudo chmod +x /usr/local/bin/youtube-upload
+}}}
+
+= Usage examples =
+
+* Upload a video:
+
+{{{
+$ youtube-upload myemail@gmail.com mypassword somefile.flv "Title" "Description" "Category" "tag1, tag2"
+}}}
+
+= Feedback =
+
+If you find a bug or want to propose an enhancement open a new [http://code.google.com/p/youtube-upload/issues/ issue]. For other comments, suggestions, whatever, you can email me: tokland AT gmail.com.
