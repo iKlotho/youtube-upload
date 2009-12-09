@@ -1,15 +1,18 @@
 = Introduction =
 
-_Youtube-upload is a simple command-line script to upload videos to youtube along with some metadata.
+_Youtube-upload_ is a command-line script that uploads videos to youtube along with some metadata. If the video does not comply with Youtube limitations (<100Mb and <10'), it will be automatically splitted before uploading.
+
+_Youtube-upload_ should work on every platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see _dependecies_ section).
 
 = Dependencies =
 
   * [http://www.python.org python] (>= 2.5)
   * [http://code.google.com/p/gdata-python-client python-gdata] (>= 1.2.4)
+  * [http://ffmpeg.org/ ffmpeg] (with MKV support)
 
 = Download & Install =
 
-  * [http://code.google.com/p/youtube-upload/downloads/list From sources]:
+  * [http://code.google.com/p/youtube-upload/downloads/list From sources] (UNIX instructions):
 
 {{{
 $ wget http://youtube-upload.googlecode.com/files/youtube-upload-VERSION.tgz
@@ -25,8 +28,18 @@ $ sudo chmod +x /usr/local/bin/youtube-upload
 
 {{{
 $ youtube-upload myemail@gmail.com mypassword somefile.flv "Title" "Description" "Category" "tag1, tag2"
+www.youtube.com/watch?v=pxzZ-fYjeYs
+}}}
+
+* Get available categories:
+
+{{{
+$ youtube-upload -c
+Tech Education Animals People Travel Entertainment Howto Sports Autos Music News Games Nonprofit Comedy Film
 }}}
 
 = Feedback =
 
-If you find a bug or want to propose an enhancement open a new [http://code.google.com/p/youtube-upload/issues/ issue]. For other comments, suggestions, whatever, you can email me: tokland AT gmail.com.
+If you find a bug or want to propose an enhancement open a new [http://code.google.com/p/youtube-upload/issues/ issue]. 
+
+For other comments, suggestions, ideas, whatever, you can email me: tokland AT gmail.com.

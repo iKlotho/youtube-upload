@@ -34,7 +34,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-VERSION = "0.0.2"
+VERSION = "0.1"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
 def debug(obj):
@@ -64,6 +64,9 @@ def get_video_duration(video_path):
 def split_video(video_path, length, max_size=None, chunk_rewind=0):
     """Split video in chunks and yield path of splitted videos."""
     total_duration = get_video_duration(video_path)
+    if total_duration <= length and os.path.getsize(video_path) <= max_size:
+        yield video_path
+        return
     base, extension = os.path.splitext(os.path.basename(video_path))
     offset = 0
     debug("split_video: %s, total_duration=%02.f" % (video_path, total_duration))

@@ -1,13 +1,8 @@
-youtube-upload (0.0.3) unstable; urgency=low
-
-  * Split files in chunks (youtube limits to 10') using ffmpeg.
-
- --  <tokland@gmail.com>  Tue, 08 Dec 2009 22:40:32 +0100
-
-youtube-upload (0.0.2) unstable; urgency=medium
+youtube-upload (0.1) unstable; urgency=high
 
   * Detect deprecated categories.
   * Validate meta-data before uploading the video.
+  * Split files in chunks (youtube limits to 10') using ffmpeg.
 
  --  <tokland@gmail.com>  Tue, 08 Dec 2009 19:49:02 +0100
 
