@@ -11,12 +11,16 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Youtube-upload.  If not, see <http://www.gnu.org/licenses/>.
+# along with Youtube-upload. If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Arnau Sanchez <tokland@gmail.com>
 
 """
-Simple script to upload videos to Youtube.
+Upload videos to youtube from the command-line (splitting the video if necessary).
 
-Dependencies: python-gdata (>= 1.2.4)
+    $ youtube-upload myemail@gmail.com mypassword anne_sophie_mutter.flv \
+      "A.S. Mutter" "Anne Sophie Mutter plays Beethoven" Music "mutter, beethoven"
+    www.youtube.com/watch?v=pxzZ-fYjeYs
 """
 
 import os
@@ -61,10 +65,10 @@ def get_video_duration(video_path):
     return sum(factor*float(value) for (factor, value) in 
         zip((60*60, 60, 1), strduration.split(":")))
 
-def split_video(video_path, length, max_size=None, chunk_rewind=0):
+def split_video(video_path, max_length, max_size=None, chunk_rewind=0):
     """Split video in chunks and yield path of splitted videos."""
     total_duration = get_video_duration(video_path)
-    if total_duration <= length and os.path.getsize(video_path) <= max_size:
+    if total_duration <= max_length and os.path.getsize(video_path) <= max_size:
         yield video_path
         return
     base, extension = os.path.splitext(os.path.basename(video_path))
@@ -76,7 +80,7 @@ def split_video(video_path, length, max_size=None, chunk_rewind=0):
         args = ["-y", "-i", video_path]
         if max_size:
             args += ["-fs", str(int(max_size))]
-        args += ["-sameq", "-ss", str(offset), "-t", str(length), output_path]
+        args += ["-sameq", "-ss", str(offset), "-t", str(max_length), output_path]
         ffmpeg(*args)
         yield output_path
         duration = get_video_duration(output_path)
@@ -85,8 +89,8 @@ def split_video(video_path, length, max_size=None, chunk_rewind=0):
         offset += duration - chunk_rewind
 
 def split_youtube_video(video_path):
-    """Split video to match Youtube restrictions (<100Mb and < 10mins)."""
-    return split_video(video_path, 60*9, max_size=99e6, chunk_rewind=10)
+    """Split video to match Youtube restrictions (<100Mb and <10minutes)."""
+    return split_video(video_path, 60*9+50, max_size=99e6, chunk_rewind=10)
 
 class Youtube:
     """Interface the Youtube API."""        
@@ -130,7 +134,7 @@ class Youtube:
         # Get response only as a way to validate meta-data
         post_url, token = self.service.GetFormUploadToken(video_entry)
         
-        # To use a POST upload instead (shell example):
+        # To use a POST upload instead (example with curl):
         # curl -F token=TOKEN file=@PATH_TO_VIDEO POST_URL         
         return self.service.InsertVideoEntry(video_entry, path)
 
@@ -172,7 +176,7 @@ def main_upload(arguments):
     
     email, password, video_path, title, description, category, skeywords = args    
     yt = Youtube(DEVELOPER_KEY, email, password)
-    keywords = filter(bool, re.split('[,;\s]+', skeywords))
+    keywords = filter(bool, map(str.strip, re.split('[,;\s]+', skeywords)))
     videos = list(split_youtube_video(video_path))
     for index, splitted_video_path in enumerate(videos):
         if len(videos) > 1:
