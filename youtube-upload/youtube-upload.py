@@ -159,24 +159,25 @@ def main_upload(args):
         print " ".join(Youtube.get_categories().keys())
         return 0    
     if options.split_only:
-        video_file, = args0
-        for path in list(split_youtube_video(video_file)):
+        video_path, = args0
+        for path in list(split_youtube_video(video_path)):
             print path
         return 0    
     elif len(args0) != 7:
         parser.print_usage()
         return 1
     
-    email, password, video_file, title, description, category, skeywords = args0    
+    email, password, video_path, title, description, category, skeywords = args0    
     yt = Youtube(email, password)
     keywords = filter(bool, re.split('[,;\s]+', skeywords))
-    videos = list(split_youtube_video(video_file))
-    for index, video_path in enumerate(videos):
+    videos = list(split_youtube_video(video_path))
+    for index, splitted_video_path in enumerate(videos):
         if len(videos) > 1:
             complete_title = "%s (%d/%d)" % (title, index+1, len(videos))
         else:
             complete_title = title
-        entry = yt.upload_video(video_file, complete_title, description, category, keywords)
+        entry = yt.upload_video(splitted_video_path, complete_title, 
+            description, category, keywords)
         url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
         print url
    
