@@ -61,7 +61,10 @@ def ffmpeg(*args):
 def get_video_duration(video_path):
     """Return video duration in seconds."""
     errdata = ffmpeg("-i", video_path)
-    strduration = re.search(r"Duration:\s*(.*?),", errdata).group(1)
+    match = re.search(r"Duration:\s*(.*?),", errdata)
+    if not match:
+        return
+    strduration = match.group(1)
     return sum(factor*float(value) for (factor, value) in 
                zip((60*60, 60, 1), strduration.split(":")))
 
@@ -70,6 +73,7 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
     if not os.path.isfile(video_path):
         raise ValueError, "Video path not found: %s" % video_path
     total_duration = get_video_duration(video_path)
+    assert total_duration
     if total_duration <= max_duration and os.path.getsize(video_path) <= max_size:
         yield video_path
         return
@@ -80,25 +84,22 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
     for index in itertools.count(1): 
         debug("split_video: index=%d, offset=%d (total=%d)" % 
             (index, offset, total_duration))
-        output_path = "%s-%d%s" % (base, index, ".mkv")
-        if os.path.isfile(output_path):
+        output_path = "%s-%d.%s" % (base, index, "mkv")
+        temp_output_path = "%s-%d.%s" % (base, index, "partial.mkv")
+        if os.path.isfile(output_path) and get_video_duration(output_path):
             debug("skipping existing file: %s" % output_path)
         else:
             args = ["-y", "-i", video_path]
             if max_size:
                 args += ["-fs", str(int(max_size))]
-            args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), output_path]
-            try:
-                ffmpeg(*args)
-            except KeyboardInterrupt:
-                debug("keyboard interrupt")
-                if os.path.isfile(output_path):
-                    debug("remove partial file: %s" % output_path)
-                    os.unlink(output_path)
-                raise
+            args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), temp_output_path]
+            ffmpeg(*args)
+            os.rename(temp_output_path, output_path)
         yield output_path
         size = os.path.getsize(output_path)
+        assert size
         duration = get_video_duration(output_path)
+        assert duration
         debug("chunk file size: %d (max: %d)" % (size, max_size))  
         debug("chunk duration: %d (max: %d)" % (duration, max_duration))
         if size < max_size and duration < max_duration:
