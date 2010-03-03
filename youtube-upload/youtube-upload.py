@@ -81,11 +81,21 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
         debug("split_video: index=%d, offset=%d (total=%d)" % 
             (index, offset, total_duration))
         output_path = "%s-%d%s" % (base, index, ".mkv")
-        args = ["-y", "-i", video_path]
-        if max_size:
-            args += ["-fs", str(int(max_size))]
-        args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), output_path]
-        ffmpeg(*args)
+        if os.path.isfile(output_path):
+            debug("skipping existing file: %s" % output_path)
+        else:
+            args = ["-y", "-i", video_path]
+            if max_size:
+                args += ["-fs", str(int(max_size))]
+            args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), output_path]
+            try:
+                ffmpeg(*args)
+            except KeyboardInterrupt:
+                debug("keyboard interrupt")
+                if os.path.isfile(output_path):
+                    debug("remove partial file: %s" % output_path)
+                    os.unlink(output_path)
+                raise
         yield output_path
         size = os.path.getsize(output_path)
         duration = get_video_duration(output_path)
