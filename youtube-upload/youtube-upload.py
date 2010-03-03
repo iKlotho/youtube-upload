@@ -18,9 +18,9 @@
 """
 Upload videos to youtube from the command-line (splitting the video if necessary).
 
-    $ youtube-upload myemail@gmail.com mypassword anne_sophie_mutter.flv \
-      "A.S. Mutter" "Anne Sophie Mutter plays Beethoven" Music "mutter, beethoven"
-    www.youtube.com/watch?v=pxzZ-fYjeYs
+$ youtube-upload myemail@gmail.com mypassword anne_sophie_mutter.flv \
+  "A.S. Mutter" "Anne Sophie Mutter plays Beethoven" Music "mutter, beethoven"
+www.youtube.com/watch?v=pxzZ-fYjeYs
 """
 
 import os
@@ -39,15 +39,15 @@ import gdata.youtube
 import gdata.youtube.service
 
 VERSION = "0.1"
-DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4iSE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
+DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
+                "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
 def debug(obj):
     """Write obj to standard error."""
     sys.stderr.write("--- " + str(obj) + "\n")
-    sys.stderr.flush()
 
 def run(command, inputdata=None, **kwargs):
-    """Run a command and return standard output"""
+    """Run a command and return standard output/error"""
     debug("run: %s" % " ".join(command))
     popen = subprocess.Popen(command, **kwargs)
     outputdata, errdata = popen.communicate(inputdata)
@@ -63,34 +63,42 @@ def get_video_duration(video_path):
     errdata = ffmpeg("-i", video_path)
     strduration = re.search(r"Duration:\s*(.*?),", errdata).group(1)
     return sum(factor*float(value) for (factor, value) in 
-        zip((60*60, 60, 1), strduration.split(":")))
+               zip((60*60, 60, 1), strduration.split(":")))
 
-def split_video(video_path, max_length, max_size=None, chunk_rewind=0):
+def split_video(video_path, max_duration, max_size=None, time_rewind=0):
     """Split video in chunks and yield path of splitted videos."""
+    if not os.path.isfile(video_path):
+        raise ValueError, "Video path not found: %s" % video_path
     total_duration = get_video_duration(video_path)
-    if total_duration <= max_length and os.path.getsize(video_path) <= max_size:
+    if total_duration <= max_duration and os.path.getsize(video_path) <= max_size:
         yield video_path
         return
     base, extension = os.path.splitext(os.path.basename(video_path))
-    offset = 0
+    
     debug("split_video: %s, total_duration=%02.f" % (video_path, total_duration))
+    offset = 0
     for index in itertools.count(1): 
-        debug("split_video: index=%d, offset=%s" % (index, offset))
-        output_path = "%s-%d.mkv" % (base, index)
+        debug("split_video: index=%d, offset=%d (total=%d)" % 
+            (index, offset, total_duration))
+        output_path = "%s-%d%s" % (base, index, ".mkv")
         args = ["-y", "-i", video_path]
         if max_size:
             args += ["-fs", str(int(max_size))]
-        args += ["-sameq", "-ss", str(offset), "-t", str(max_length), output_path]
+        args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), output_path]
         ffmpeg(*args)
         yield output_path
+        size = os.path.getsize(output_path)
         duration = get_video_duration(output_path)
-        if offset + duration >= total_duration:
+        debug("chunk file size: %d (max: %d)" % (size, max_size))  
+        debug("chunk duration: %d (max: %d)" % (duration, max_duration))
+        if size < max_size and duration < max_duration:
+            debug("end of video reached: %d chunks created" % index)
             break 
-        offset += duration - chunk_rewind
+        offset += duration - time_rewind
 
 def split_youtube_video(video_path):
     """Split video to match Youtube restrictions (<100Mb and <10minutes)."""
-    return split_video(video_path, 60*9+50, max_size=99e6, chunk_rewind=10)
+    return split_video(video_path, 60*10, max_size=int(100e6), time_rewind=5)
 
 class Youtube:
     """Interface the Youtube API."""        
@@ -113,7 +121,7 @@ class Youtube:
         assert self.service, "Youtube service object is not set"
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
-            raise ValueError("Invalid category '%s' (accepted: %s)" % (category, valid))
+            raise ValueError("Invalid category '%s' (valid: %s)" % (category, valid))
                  
         media_group = gdata.media.Group(
             title=gdata.media.Title(text=title),
@@ -135,7 +143,7 @@ class Youtube:
         post_url, token = self.service.GetFormUploadToken(video_entry)
         
         # To use a POST upload instead (example with curl):
-        # curl -F token=TOKEN file=@PATH_TO_VIDEO POST_URL         
+        # curl -F token=TOKEN file=@VIDEO_PATH POST_URL         
         return self.service.InsertVideoEntry(video_entry, path)
 
     @classmethod
@@ -157,19 +165,19 @@ def main_upload(arguments):
     Upload videos to youtube."""
     parser = optparse.OptionParser(usage, version=VERSION)
     parser.add_option('-c', '--get-categories', dest='get_categories',
-          action="store_true", default=False, help='Show categories')
+          action="store_true", default=False, help='Show video categories')
     parser.add_option('-s', '--split-only', dest='split_only',
-          action="store_true", default=False, help='Show videos without uploading them')
+          action="store_true", default=False, help='Split videos without uploading')
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
         print " ".join(Youtube.get_categories().keys())
-        return 0    
-    if options.split_only:
+        return
+    elif options.split_only:
         video_path, = args
         for path in split_youtube_video(video_path):
             print path
-        return 0    
+        return
     elif len(args) != 7:
         parser.print_usage()
         return 1
