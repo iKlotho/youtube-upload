@@ -1,8 +1,8 @@
 = Introduction =
 
-_Youtube-upload_ is a command-line script that uploads videos to youtube along with some metadata. If the video does not comply with Youtube limitations (<100Mb and <10'), it will be automatically splitted before uploading.
+_Youtube-upload_ is a command-line script that uploads videos to Youtube along with some metadata. If a video does not comply with Youtube limitations (<100Mb and <10'), it will be automatically splitted before uploading.
 
-_Youtube-upload_ should work on every platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see _dependecies_ section).
+_Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see the _dependecies_ section).
 
 = Dependencies =
 
@@ -24,11 +24,20 @@ $ sudo chmod +x /usr/local/bin/youtube-upload
 
 = Usage examples =
 
-* Upload a video:
+* Upload a small video:
 
 {{{
-$ youtube-upload myemail@gmail.com mypassword somefile.flv "Title" "Description" "Category" "tag1, tag2"
+$ youtube-upload myemail@gmail.com mypassword somevideo.avi "Title" "Description" "Category" "tag1, tag2"
 www.youtube.com/watch?v=pxzZ-fYjeYs
+}}}
+
+* Upload a big video:
+
+{{{
+$ youtube-upload myemail@gmail.com mypassword somebigvideo.flv "Title" "Description" "Category" "tag1, tag2"
+www.youtube.com/watch?v=pxzZ-fYjeYs
+www.youtube.com/watch?v=fe1s43-f1f8
+www.youtube.com/watch?v=9fgqref13ww
 }}}
 
 * Get available categories:
