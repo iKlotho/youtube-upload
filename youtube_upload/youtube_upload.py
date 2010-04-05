@@ -53,9 +53,12 @@ def run(command, inputdata=None, **kwargs):
     outputdata, errdata = popen.communicate(inputdata)
     return outputdata, errdata
 
-def ffmpeg(*args):
+def ffmpeg(*args, **kwargs):
     """Run ffmpeg command and return standard error output."""
-    outputdata, errdata = run(["ffmpeg"] + list(args), stderr=subprocess.PIPE)
+    kwargs2 = {}
+    if not kwargs.get("show_stderr"):
+        kwargs2["stderr"] = subprocess.PIPE
+    outputdata, errdata = run(["ffmpeg"] + list(args), **kwargs2)
     return errdata
 
 def get_video_duration(video_path):
@@ -93,7 +96,7 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
             if max_size:
                 args += ["-fs", str(int(max_size))]
             args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), temp_output_path]
-            ffmpeg(*args)
+            err = ffmpeg(*args, show_stderr=True)
             os.rename(temp_output_path, output_path)
         yield output_path
         size = os.path.getsize(output_path)

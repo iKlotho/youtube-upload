@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Run command on hotkeys (keyboard & mouse) for X-Windows"""
+"""Upload videos to Youtube (spliting them if necessary)"""
 
 # Copyright (c) 2008-2009 Arnau Sanchez <tokland@gmail.com>
 
