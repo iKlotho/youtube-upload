@@ -112,7 +112,7 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
 
 def split_youtube_video(video_path):
     """Split video to match Youtube restrictions (<100Mb and <10minutes)."""
-    return split_video(video_path, 60*10, max_size=int(100e6), time_rewind=5)
+    return split_video(video_path, 60*10, max_size=int(2e9), time_rewind=5)
 
 class Youtube:
     """Interface the Youtube API."""        
