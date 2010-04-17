@@ -97,7 +97,7 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
                 args += ["-fs", str(int(max_size))]
             args += ["-vcodec", "copy", "-acodec", "copy", "-ss", str(offset), 
                      "-t", str(max_duration), temp_output_path]
-            err = ffmpeg(*args, show_stderr=True)
+            err = ffmpeg(*args, **{"show_stderr": True})
             os.rename(temp_output_path, output_path)
         yield output_path
         size = os.path.getsize(output_path)
