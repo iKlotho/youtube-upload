@@ -95,7 +95,8 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
             args = ["-y", "-i", video_path]
             if max_size:
                 args += ["-fs", str(int(max_size))]
-            args += ["-sameq", "-ss", str(offset), "-t", str(max_duration), temp_output_path]
+            args += ["-vcodec", "copy", "-acodec", "copy", "-ss", str(offset), 
+                     "-t", str(max_duration), temp_output_path]
             err = ffmpeg(*args, show_stderr=True)
             os.rename(temp_output_path, output_path)
         yield output_path
