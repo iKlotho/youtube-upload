@@ -130,8 +130,22 @@ class Youtube:
         service.ProgrammaticLogin()
         self.service = service
         self.categories = self.get_categories()
+
+    def get_upload_form_data(self, path, *args, **kwargs):
+        video_entry = self._create_video_entry(*args, **kwargs)
+        post_url, token = self.service.GetFormUploadToken(video_entry)
+        debug("post url='%s', token='%s'" % (post_url, token))
+        # This info can be used a POST upload. Example with curl from shell:
+        # $ curl -F token=TOKEN -F file=@VIDEO_PATH "POST_URL?nexturl=REDIRECT_URL"
+        #
+        # See examples/upload_with_curl.sh        
+        return dict(post_url=post_url, token=token)
+
+    def upload_video(self, path, *args, **kwargs):
+        video_entry = self._create_video_entry(*args, **kwargs)
+        return self.service.InsertVideoEntry(video_entry, path)
         
-    def upload_video(self, path, title, description, category, keywords=None, location=None):
+    def _create_video_entry(self, title, description, category, keywords=None, location=None):
         """Upload a video to youtube along with some metadata."""
         assert self.service, "Youtube service object is not set"
         if category not in self.categories:
@@ -152,15 +166,8 @@ class Youtube:
             where.set_location(location)
         else: 
             where = None
-        video_entry = gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where)
-        
-        # Get response only as a way to validate meta-data
-        post_url, token = self.service.GetFormUploadToken(video_entry)
-        
-        # To use a POST upload instead (example with curl):
-        # curl -F token=TOKEN file=@VIDEO_PATH POST_URL         
-        return self.service.InsertVideoEntry(video_entry, path)
-
+        return gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where)
+                
     @classmethod
     def get_categories(cls):
         """Return categories dictionary with pairs (term, label)."""
@@ -183,6 +190,8 @@ def main_upload(arguments):
           action="store_true", default=False, help='Show video categories')
     parser.add_option('-s', '--split-only', dest='split_only',
           action="store_true", default=False, help='Split videos without uploading')
+    parser.add_option('-u', '--get-upload-form-info', dest='get_upload_form_data',
+          action="store_true", default=False, help="Don't upload, just get the form info")
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -197,7 +206,8 @@ def main_upload(arguments):
         parser.print_usage()
         return 1
     
-    email, password, video_path, title, description, category, skeywords = args    
+    email, password, video_path, title, description, category, skeywords = args
+    debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
     keywords = filter(bool, map(str.strip, re.split('[,;\s]+', skeywords)))
     videos = list(split_youtube_video(video_path))
@@ -206,10 +216,16 @@ def main_upload(arguments):
             complete_title = "%s [%d/%d]" % (title, index+1, len(videos))
         else:
             complete_title = title
-        entry = yt.upload_video(splitted_video_path, complete_title, 
-            description, category, keywords)
-        url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
-        print url
+        if options.get_upload_form_data:
+          data = yt.get_upload_form_data(splitted_video_path, complete_title, 
+              description, category, keywords)
+          print "|".join([splitted_video_path, data["token"], data["post_url"]])        
+        else:
+          debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
+          entry = yt.upload_video(splitted_video_path, complete_title, 
+              description, category, keywords)
+          url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
+          print url
    
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
