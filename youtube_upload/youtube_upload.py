@@ -190,6 +190,8 @@ def main_upload(arguments):
           action="store_true", default=False, help='Show video categories')
     parser.add_option('-s', '--split-only', dest='split_only',
           action="store_true", default=False, help='Split videos without uploading')
+    parser.add_option('-n', '--no-split', dest='no_split',
+          action="store_true", default=False, help='Skip video split')
     parser.add_option('-u', '--get-upload-form-info', dest='get_upload_form_data',
           action="store_true", default=False, help="Don't upload, just get the form info")
     options, args = parser.parse_args(arguments)
@@ -207,10 +209,10 @@ def main_upload(arguments):
         return 1
     
     email, password, video_path, title, description, category, skeywords = args
+    videos = ([video_path] if options.no_split else list(split_youtube_video(video_path)))
     debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
     keywords = filter(bool, map(str.strip, re.split('[,;\s]+', skeywords)))
-    videos = list(split_youtube_video(video_path))
     for index, splitted_video_path in enumerate(videos):
         if len(videos) > 1:
             complete_title = "%s [%d/%d]" % (title, index+1, len(videos))
