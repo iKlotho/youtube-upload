@@ -56,7 +56,7 @@ def run(command, inputdata=None, **kwargs):
 def ffmpeg(*args, **kwargs):
     """Run ffmpeg command and return standard error output."""
     kwargs2 = {}
-    if not kwargs.get("show_stderr"):
+    if "show_stderr" not in kwargs:
         kwargs2["stderr"] = subprocess.PIPE
     outputdata, errdata = run(["ffmpeg"] + list(args), **kwargs2)
     return errdata
@@ -97,7 +97,7 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
                 args += ["-fs", str(int(max_size))]
             args += ["-vcodec", "copy", "-acodec", "copy", "-ss", str(offset), 
                      "-t", str(max_duration), temp_output_path]
-            err = ffmpeg(*args, **{"show_stderr": True})
+            err = ffmpeg(*args, **dict(show_stderr= True))
             os.rename(temp_output_path, output_path)
         yield output_path
         size = os.path.getsize(output_path)
@@ -132,21 +132,21 @@ class Youtube:
         self.categories = self.get_categories()
 
     def get_upload_form_data(self, path, *args, **kwargs):
+        """Return dict with keys 'post_url' and 'token' with upload info."""
         video_entry = self._create_video_entry(*args, **kwargs)
         post_url, token = self.service.GetFormUploadToken(video_entry)
         debug("post url='%s', token='%s'" % (post_url, token))
-        # This info can be used a POST upload. Example with curl from shell:
+        # This info can be used for a POST upload. For example, with curl:
         # $ curl -F token=TOKEN -F file=@VIDEO_PATH "POST_URL?nexturl=REDIRECT_URL"
-        #
-        # See examples/upload_with_curl.sh        
+        # (See also bash script: examples/upload_with_curl.sh)        
         return dict(post_url=post_url, token=token)
 
     def upload_video(self, path, *args, **kwargs):
+        """Upload a video."""
         video_entry = self._create_video_entry(*args, **kwargs)
         return self.service.InsertVideoEntry(video_entry, path)
         
     def _create_video_entry(self, title, description, category, keywords=None, location=None):
-        """Upload a video to youtube along with some metadata."""
         assert self.service, "Youtube service object is not set"
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
@@ -184,16 +184,16 @@ def main_upload(arguments):
     """Upload video to Youtube."""
     usage = """Usage: %prog [OPTIONS] EMAIL PASSWORD FILE TITLE DESCRIPTION CATEGORY KEYWORDS
 
-    Upload videos to youtube."""
+    Upload a video to youtube spliting it if necessary (uses ffmpeg)."""
     parser = optparse.OptionParser(usage, version=VERSION)
     parser.add_option('-c', '--get-categories', dest='get_categories',
-          action="store_true", default=False, help='Show video categories')
+        action="store_true", default=False, help='Show video categories')
     parser.add_option('-s', '--split-only', dest='split_only',
-          action="store_true", default=False, help='Split videos without uploading')
+        action="store_true", default=False, help='Split videos without uploading')
     parser.add_option('-n', '--no-split', dest='no_split',
-          action="store_true", default=False, help='Skip video split')
+        action="store_true", default=False, help='Skip video split')
     parser.add_option('-u', '--get-upload-form-info', dest='get_upload_form_data',
-          action="store_true", default=False, help="Don't upload, just get the form info")
+        action="store_true", default=False, help="Don't upload, just get the form info")
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -218,16 +218,14 @@ def main_upload(arguments):
             complete_title = "%s [%d/%d]" % (title, index+1, len(videos))
         else:
             complete_title = title
+        args = [splitted_video_path, complete_title, description, category, keywords]
         if options.get_upload_form_data:
-          data = yt.get_upload_form_data(splitted_video_path, complete_title, 
-              description, category, keywords)
+          data = yt.get_upload_form_data(*args)
           print "|".join([splitted_video_path, data["token"], data["post_url"]])        
         else:
           debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
-          entry = yt.upload_video(splitted_video_path, complete_title, 
-              description, category, keywords)
-          url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
-          print url
+          entry = yt.upload_video(*args)
+          print entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
    
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
