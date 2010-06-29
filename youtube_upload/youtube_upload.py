@@ -112,7 +112,7 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
         offset += duration - time_rewind
 
 def split_youtube_video(video_path):
-    """Split video to match Youtube restrictions (<100Mb and <10minutes)."""
+    """Split video to match Youtube restrictions (<2Gb and <10minutes)."""
     return split_video(video_path, 60*10, max_size=int(2e9), time_rewind=5)
 
 class Youtube:
@@ -122,7 +122,7 @@ class Youtube:
     def __init__(self, developer_key, email, password, source=None, client_id=None):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
-        service.ssl = False
+        service.ssl = False # SSL is not yet supported by Youtube API
         service.email = email
         service.password = password
         service.source = source
@@ -137,9 +137,6 @@ class Youtube:
         video_entry = self._create_video_entry(*args, **kwargs)
         post_url, token = self.service.GetFormUploadToken(video_entry)
         debug("post url='%s', token='%s'" % (post_url, token))
-        # This info can be used for a POST upload. For example, with curl:
-        # $ curl -F token=TOKEN -F file=@VIDEO_PATH "POST_URL?nexturl=REDIRECT_URL"
-        # (See also bash script: examples/upload_with_curl.sh)        
         return dict(post_url=post_url, token=token)
 
     def upload_video(self, path, *args, **kwargs):
@@ -184,9 +181,8 @@ class Youtube:
 
 def parse_location(string):
     """Return tuple (long, latitude) from string with coordinates."""
-    if not string:
-        return
-    return map(float, string.split(",", 1))
+    if string.strip():
+        return map(float, string.split(",", 1))
     
 def main_upload(arguments):
     """Upload video to Youtube."""
