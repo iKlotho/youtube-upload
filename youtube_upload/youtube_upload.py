@@ -147,7 +147,8 @@ class Youtube:
         video_entry = self._create_video_entry(*args, **kwargs)
         return self.service.InsertVideoEntry(video_entry, path)
         
-    def _create_video_entry(self, title, description, category, keywords=None, location=None):
+    def _create_video_entry(self, title, description, category, keywords=None, 
+            location=None, private=False):
         assert self.service, "Youtube service object is not set"
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
@@ -161,6 +162,7 @@ class Youtube:
                 text=category,
                 label=self.categories[category],
                 scheme=self.CATEGORIES_SCHEME),
+            private=(gdata.media.Private() if private else None),
             player=None)
         if location:            
             where = gdata.geo.Where()
@@ -195,6 +197,8 @@ def main_upload(arguments):
         action="store_true", default=False, help='Skip video split')
     parser.add_option('-u', '--get-upload-form-info', dest='get_upload_form_data',
         action="store_true", default=False, help="Don't upload, just get the form info")
+    parser.add_option('-p', '--private', dest='private',
+        action="store_true", default=False, help='Set uploaded video as private')
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -221,12 +225,13 @@ def main_upload(arguments):
         else:
             complete_title = title
         args = [splitted_video_path, complete_title, description, category, keywords]
+        kwargs = dict(private=options.private)
         if options.get_upload_form_data:
-          data = yt.get_upload_form_data(*args)
+          data = yt.get_upload_form_data(*args, **kwargs)
           print "|".join([splitted_video_path, data["token"], data["post_url"]])        
         else:
           debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
-          entry = yt.upload_video(*args)
+          entry = yt.upload_video(*args, **kwargs)
           print entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
    
 if __name__ == '__main__':
