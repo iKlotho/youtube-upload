@@ -122,6 +122,7 @@ class Youtube:
     def __init__(self, developer_key, email, password, source=None, client_id=None):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
+        service.ssl = False
         service.email = email
         service.password = password
         service.source = source
