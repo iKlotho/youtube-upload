@@ -182,6 +182,11 @@ class Youtube:
         xml = ElementTree.XML(xmldata)
         return dict(filter(bool, map(get_pair, xml)))
 
+def parse_location(string):
+    """Return tuple (long, latitude) from string with coordinates."""
+    if not string:
+        return
+    return map(float, string.split(",", 1))
     
 def main_upload(arguments):
     """Upload video to Youtube."""
@@ -197,8 +202,10 @@ def main_upload(arguments):
         action="store_true", default=False, help='Skip video split')
     parser.add_option('-u', '--get-upload-form-info', dest='get_upload_form_data',
         action="store_true", default=False, help="Don't upload, just get the form info")
-    parser.add_option('-p', '--private', dest='private',
+    parser.add_option('', '--private', dest='private',
         action="store_true", default=False, help='Set uploaded video as private')
+    parser.add_option('', '--location', dest='location', type="string", default=None,
+        metavar="COORDINATES", help='Video location (lat, lon). example: "37.0,-122.0"')
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -225,7 +232,8 @@ def main_upload(arguments):
         else:
             complete_title = title
         args = [splitted_video_path, complete_title, description, category, keywords]
-        kwargs = dict(private=options.private)
+        kwargs = dict(private=options.private, location=parse_location(options.location))
+        debug("kwargs = %s" % kwargs)
         if options.get_upload_form_data:
           data = yt.get_upload_form_data(*args, **kwargs)
           print "|".join([splitted_video_path, data["token"], data["post_url"]])        
