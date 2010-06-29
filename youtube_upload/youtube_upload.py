@@ -209,7 +209,7 @@ def main_upload(arguments):
         return 1
     
     email, password0, video_path, title, description, category, skeywords = args
-    password = (sys.stdin.read().strip() if password0 == "-" else password0)
+    password = (sys.stdin.readline().strip() if password0 == "-" else password0)
     videos = ([video_path] if options.no_split else list(split_youtube_video(video_path)))
     debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
