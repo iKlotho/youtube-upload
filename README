@@ -47,6 +47,13 @@ $ youtube-upload -c
 Tech Education Animals People Travel Entertainment Howto Sports Autos Music News Games Nonprofit Comedy Film
 }}}
 
+If you don't want (or you can't) install software, you can run it directly from sources:
+
+{{{
+$ cd youtube-upload-VERSION
+$ python youtube_upload/youtube_upload.py ...
+}}}
+
 = Feedback =
 
 To report a bug, propose an enhancement or make a question, open a new [http://code.google.com/p/youtube-upload/issues/ issue]. 

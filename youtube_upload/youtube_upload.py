@@ -38,7 +38,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-VERSION = "0.3"
+VERSION = "0.4"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
@@ -227,10 +227,8 @@ def main_upload(arguments):
     yt = Youtube(DEVELOPER_KEY, email, password)
     keywords = filter(bool, map(str.strip, re.split('[,;\s]+', skeywords)))
     for index, splitted_video_path in enumerate(videos):
-        if len(videos) > 1:
-            complete_title = "%s [%d/%d]" % (title, index+1, len(videos))
-        else:
-            complete_title = title
+        complete_title = ("%s [%d/%d]" % (title, index+1, len(videos)) 
+                          if len(videos) > 1 else title)
         args = [splitted_video_path, complete_title, description, category, keywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
         debug("kwargs = %s" % kwargs)
