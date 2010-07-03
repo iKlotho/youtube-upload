@@ -26,6 +26,7 @@ www.youtube.com/watch?v=pxzZ-fYjeYs
 import os
 import re
 import sys
+import locale
 import urllib
 import optparse
 import itertools
@@ -216,13 +217,14 @@ def main_upload(arguments):
         parser.print_usage()
         return 1
     
+    encoding = sys.stdout.encoding or locale.getpreferredencoding()
     email, password0, video_path, title, description, category, skeywords = \
-        [unicode(s, sys.stdin.encoding or "utf-8").encode("utf-8") for s in args]
+        [unicode(s, encoding) for s in args]
     password = (sys.stdin.readline().strip() if password0 == "-" else password0)
     videos = ([video_path] if options.no_split else list(split_youtube_video(video_path)))
     debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
-    keywords = filter(bool, map(str.strip, re.split('[,;\s]+', skeywords)))
+    keywords = filter(bool, [s.strip() for s in re.split('[,;\s]+', skeywords)])
     for index, splitted_video_path in enumerate(videos):
         complete_title = ("%s [%d/%d]" % (title, index+1, len(videos)) 
                           if len(videos) > 1 else title)
