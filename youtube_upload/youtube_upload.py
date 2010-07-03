@@ -181,7 +181,7 @@ class Youtube:
 
 def parse_location(string):
     """Return tuple (long, latitude) from string with coordinates."""
-    if string.strip():
+    if string and string.strip():
         return map(float, string.split(",", 1))
     
 def main_upload(arguments):
