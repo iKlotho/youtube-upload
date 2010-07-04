@@ -45,7 +45,11 @@ DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
 
 def debug(obj):
     """Write obj to standard error."""
-    sys.stderr.write("--- " + str(obj) + "\n")
+    string = str(obj.encode(get_encoding()) if isinstance(obj, unicode) else obj) 
+    sys.stderr.write("--- " + string + "\n")
+
+def get_encoding():
+    return sys.stdout.encoding or locale.getpreferredencoding()
 
 def run(command, inputdata=None, **kwargs):
     """Run a command and return standard output/error"""
@@ -217,9 +221,11 @@ def main_upload(arguments):
         parser.print_usage()
         return 1
     
-    encoding = sys.stdout.encoding or locale.getpreferredencoding()
+    encoding = get_encoding()
     email, password0, video_path, title, description, category, skeywords = \
         [unicode(s, encoding) for s in args]
+    from ipdb import set_trace; set_trace()
+    debug(title)
     password = (sys.stdin.readline().strip() if password0 == "-" else password0)
     videos = ([video_path] if options.no_split else list(split_youtube_video(video_path)))
     debug("connecting to Youtube API")
@@ -230,7 +236,6 @@ def main_upload(arguments):
                           if len(videos) > 1 else title)
         args = [splitted_video_path, complete_title, description, category, keywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
-        debug("kwargs = %s" % kwargs)
         if options.get_upload_form_data:
           data = yt.get_upload_form_data(*args, **kwargs)
           print "|".join([splitted_video_path, data["token"], data["post_url"]])        
