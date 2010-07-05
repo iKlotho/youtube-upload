@@ -45,7 +45,8 @@ DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
 
 def debug(obj):
     """Write obj to standard error."""
-    string = str(obj.encode(get_encoding()) if isinstance(obj, unicode) else obj) 
+    string = str(obj.encode(get_encoding(), "backslashreplace") 
+                 if isinstance(obj, unicode) else obj)
     sys.stderr.write("--- " + string + "\n")
 
 def get_encoding():
