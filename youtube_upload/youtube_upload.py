@@ -224,8 +224,6 @@ def main_upload(arguments):
     encoding = get_encoding()
     email, password0, video_path, title, description, category, skeywords = \
         [unicode(s, encoding) for s in args]
-    from ipdb import set_trace; set_trace()
-    debug(title)
     password = (sys.stdin.readline().strip() if password0 == "-" else password0)
     videos = ([video_path] if options.no_split else list(split_youtube_video(video_path)))
     debug("connecting to Youtube API")
