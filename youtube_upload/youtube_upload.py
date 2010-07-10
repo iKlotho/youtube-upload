@@ -149,7 +149,13 @@ class Youtube:
         """Upload a video."""
         video_entry = self._create_video_entry(*args, **kwargs)
         return self.service.InsertVideoEntry(video_entry, path)
-        
+
+    def upload_video_to_playlist(self, video_id, playlist_uri, title=None, description=None):
+        """Add video to playlist."""
+        playlist_video_entry = self.service.AddPlaylistVideoEntryToPlaylist(
+            playlist_uri, video_id, title, description)
+        return playlist_video_entry
+           
     def _create_video_entry(self, title, description, category, keywords=None, 
             location=None, private=False):
         assert self.service, "Youtube service object is not set"
@@ -208,6 +214,8 @@ def main_upload(arguments):
         action="store_true", default=False, help='Set uploaded video as private')
     parser.add_option('', '--location', dest='location', type="string", default=None,
         metavar="COORDINATES", help='Video location (lat, lon). example: "37.0,-122.0"')
+    parser.add_option('', '--playlist-uri', dest='playlist_uri', type="string", default=None,
+        metavar="URI", help='Upload video to playlist')
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -237,11 +245,18 @@ def main_upload(arguments):
         kwargs = dict(private=options.private, location=parse_location(options.location))
         if options.get_upload_form_data:
           data = yt.get_upload_form_data(*args, **kwargs)
-          print "|".join([splitted_video_path, data["token"], data["post_url"]])        
+          print "|".join([splitted_video_path, data["token"], data["post_url"]])
+          if options.playlist_uri:
+              debug("--playlist-uri is ignored on form upload")        
         else:
           debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
           entry = yt.upload_video(*args, **kwargs)
-          print entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
+          url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
+          print url
+          video_id = re.search("=(.*)$", url).group(1)
+          if options.playlist_uri: 
+              debug("adding video (%s) to playlist: %s" % (video_id, options.playlist_uri))
+              yt.upload_video_to_playlist(video_id, options.playlist_uri)
    
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
