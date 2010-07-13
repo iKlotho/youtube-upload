@@ -14,6 +14,7 @@
 # along with Youtube-upload. If not, see <http://www.gnu.org/licenses/>.
 #
 # Author: Arnau Sanchez <tokland@gmail.com>
+# Website: http://code.google.com/p/tokland/
 
 """
 Upload videos to youtube from the command-line (splitting the video if necessary).
