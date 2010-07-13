@@ -1,6 +1,6 @@
 = Introduction =
 
-_Youtube-upload_ is a command-line script that uploads videos to Youtube along with some metadata. If a video does not comply with Youtube limitations (<100Mb and <10'), it will be automatically splitted before uploading.
+_Youtube-upload_ is a command-line script that uploads videos to Youtube (with metadata). If a video does not comply with Youtube limitations (<2Gb and <10'), it will be automatically splitted before uploading.
 
 _Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see the _dependecies_ section).
 
@@ -47,15 +47,26 @@ $ youtube-upload -c
 Tech Education Animals People Travel Entertainment Howto Sports Autos Music News Games Nonprofit Comedy Film
 }}}
 
-If you don't want (or you can't) install software, you can run it directly from sources:
+If you don't want (or you can't) install software on the computer, run it directly from sources:
 
 {{{
 $ cd youtube-upload-VERSION
 $ python youtube_upload/youtube_upload.py ...
 }}}
 
+* Upload with _curl_
+
+The standard Google API does not give any feedback on the upload process nor allow the user to tweak it (limit the speed, use a proxy, ...). Fortunately, the API also provides an alternative upload method, a standard HTTP POST request, so we can easily use third-party applications to do the actual upload. 
+
+The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh])  that shows how to upload a video using _curl_. This command would upload _somevideo.flv_ with a limit rate of 100KBytes (notice the _-u_ option in _youtube-upload_):
+
+{{{
+$ youtube-upload -u myemail@gmail.com mypassword somevideo.flv "Title" "Description" "Category" "tag1,tag2" |
+    bash examples/upload_with_curl.sh --limit-rate 100k
+}}}
+
 = Feedback =
 
-To report a bug, propose an enhancement or make a question, open a new [http://code.google.com/p/youtube-upload/issues/ issue]. 
+To report a bug, propose an enhancement or even make a question, open a  [http://code.google.com/p/youtube-upload/issues/ new issue]. 
 
-For other comments, suggestions, ideas, whatever, you can email me: tokland AT gmail.com.
+Feel free to email me: tokland AT gmail.com.
