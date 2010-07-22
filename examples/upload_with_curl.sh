@@ -12,7 +12,7 @@ get_video_id_from_headers() {
   grep -m1 "^Location: " | grep -o "id=[^&]\+" | cut -d"=" -f2-
 }
 
-while IFS="|" read FILE TOKEN POST_URL; do
+while { read FILE; read TOKEN; read POST_URL; }; do
   debug "start upload: $FILE -> $POST_URL (token: $TOKEN)"
   test "$FILE" -a "$TOKEN" -a "$POST_URL" || {
     debug "Wrong input"

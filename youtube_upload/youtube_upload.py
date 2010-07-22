@@ -246,7 +246,7 @@ def main_upload(arguments):
         kwargs = dict(private=options.private, location=parse_location(options.location))
         if options.get_upload_form_data:
           data = yt.get_upload_form_data(*args, **kwargs)
-          print "|".join([splitted_video_path, data["token"], data["post_url"]])
+          print "\n".join([splitted_video_path, data["token"], data["post_url"]])
           if options.playlist_uri:
               debug("--playlist-uri is ignored on form upload")        
         else:
