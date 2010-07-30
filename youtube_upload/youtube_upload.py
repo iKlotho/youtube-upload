@@ -51,6 +51,7 @@ def debug(obj):
     sys.stderr.write("--- " + string + "\n")
 
 def get_encoding():
+    """Guess terminal encoding.""" 
     return sys.stdout.encoding or locale.getpreferredencoding()
 
 def run(command, inputdata=None, **kwargs):
@@ -78,7 +79,7 @@ def get_video_duration(video_path):
     return sum(factor*float(value) for (factor, value) in 
                zip((60*60, 60, 1), strduration.split(":")))
 
-def split_video(video_path, max_duration, max_size=None, time_rewind=0):
+def split_video(video_path, max_duration, max_size=None, split_rewind=0):
     """Split video in chunks and yield path of splitted videos."""
     if not os.path.isfile(video_path):
         raise ValueError, "Video path not found: %s" % video_path
@@ -116,11 +117,11 @@ def split_video(video_path, max_duration, max_size=None, time_rewind=0):
         if size < max_size and duration < max_duration:
             debug("end of video reached: %d chunks created" % index)
             break 
-        offset += duration - time_rewind
+        offset += duration - split_rewind
 
-def split_youtube_video(video_path):
+def split_youtube_video(video_path, split_rewind=5):
     """Split video to match Youtube restrictions (<2Gb and <10minutes)."""
-    return split_video(video_path, 60*10, max_size=int(2e9), time_rewind=5)
+    return split_video(video_path, 60*10, max_size=int(2e9), split_rewind=split_rewind)
 
 class Youtube:
     """Interface the Youtube API."""        
@@ -151,7 +152,7 @@ class Youtube:
         video_entry = self._create_video_entry(*args, **kwargs)
         return self.service.InsertVideoEntry(video_entry, path)
 
-    def upload_video_to_playlist(self, video_id, playlist_uri, title=None, description=None):
+    def add_video_to_playlist(self, video_id, playlist_uri, title=None, description=None):
         """Add video to playlist."""
         playlist_video_entry = self.service.AddPlaylistVideoEntryToPlaylist(
             playlist_uri, video_id, title, description)
@@ -217,6 +218,9 @@ def main_upload(arguments):
         metavar="COORDINATES", help='Video location (lat, lon). example: "37.0,-122.0"')
     parser.add_option('', '--playlist-uri', dest='playlist_uri', type="string", default=None,
         metavar="URI", help='Upload video to playlist')
+    parser.add_option('', '--time-rewind', dest='split_rewind', type="int", 
+        default=5, metavar="SECONDS", 
+        help='Time to rewind between videos on split (default: 5 seconds)')
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -224,7 +228,7 @@ def main_upload(arguments):
         return
     elif options.split_only:
         video_path, = args
-        for path in split_youtube_video(video_path):
+        for path in split_youtube_video(video_path, options.split_rewind):
             print path
         return
     elif len(args) != 7:
@@ -235,7 +239,8 @@ def main_upload(arguments):
     email, password0, video_path, title, description, category, skeywords = \
         [unicode(s, encoding) for s in args]
     password = (sys.stdin.readline().strip() if password0 == "-" else password0)
-    videos = ([video_path] if options.no_split else list(split_youtube_video(video_path)))
+    videos = ([video_path] if options.no_split else 
+              list(split_youtube_video(video_path, options.split_rewind)))
     debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
     keywords = filter(bool, [s.strip() for s in re.split('[,;\s]+', skeywords)])
@@ -257,7 +262,7 @@ def main_upload(arguments):
           video_id = re.search("=(.*)$", url).group(1)
           if options.playlist_uri: 
               debug("adding video (%s) to playlist: %s" % (video_id, options.playlist_uri))
-              yt.upload_video_to_playlist(video_id, options.playlist_uri)
+              yt.add_video_to_playlist(video_id, options.playlist_uri)
    
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))

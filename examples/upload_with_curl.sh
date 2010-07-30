@@ -14,10 +14,6 @@ get_video_id_from_headers() {
 
 while { read FILE; read TOKEN; read POST_URL; }; do
   debug "start upload: $FILE -> $POST_URL (token: $TOKEN)"
-  test "$FILE" -a "$TOKEN" -a "$POST_URL" || {
-    debug "Wrong input"
-    continue;
-  }    
   REDIRECT_URL="http://code.google.com/p/youtube-upload"
   VIDEO_ID=$(curl --include -F "token=$TOKEN" -F "file=@$FILE" "$@" \
              "$POST_URL?nexturl=$REDIRECT_URL" | get_video_id_from_headers)
