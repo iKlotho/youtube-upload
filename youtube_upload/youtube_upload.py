@@ -164,11 +164,10 @@ class Youtube:
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
             raise ValueError("Invalid category '%s' (valid: %s)" % (category, valid))
-                 
         media_group = gdata.media.Group(
             title=gdata.media.Title(text=title),
             description=gdata.media.Description(description_type='plain', text=description),
-            keywords=gdata.media.Keywords(text=", ".join(keywords or [])),
+            keywords=gdata.media.Keywords(text=keywords),
             category=gdata.media.Category(
                 text=category,
                 label=self.categories[category],
@@ -243,11 +242,10 @@ def main_upload(arguments):
               list(split_youtube_video(video_path, options.split_rewind)))
     debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
-    keywords = filter(bool, [s.strip() for s in re.split('[,;\s]+', skeywords)])
     for index, splitted_video_path in enumerate(videos):
         complete_title = ("%s [%d/%d]" % (title, index+1, len(videos)) 
                           if len(videos) > 1 else title)
-        args = [splitted_video_path, complete_title, description, category, keywords]
+        args = [splitted_video_path, complete_title, description, category, skeywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
         if options.get_upload_form_data:
           data = yt.get_upload_form_data(*args, **kwargs)
