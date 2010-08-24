@@ -120,8 +120,8 @@ def split_video(video_path, max_duration, max_size=None, split_rewind=0):
         offset += duration - split_rewind
 
 def split_youtube_video(video_path, split_rewind=5):
-    """Split video to match Youtube restrictions (<2Gb and <10minutes)."""
-    return split_video(video_path, 60*10, max_size=int(2e9), split_rewind=split_rewind)
+    """Split video to match Youtube restrictions (<2Gb and <15minutes)."""
+    return split_video(video_path, 60*15, max_size=int(2e9), split_rewind=split_rewind)
 
 class Youtube:
     """Interface the Youtube API."""        
