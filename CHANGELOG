@@ -1,3 +1,13 @@
+youtube-upload (0.4.1) unstable; urgency=low
+
+  * Update to new Youtube limits (15mins, 2Gb) 
+  * Add curl options to bash script 
+  * Fix encoding for debug (issue10)
+  * Fix location bug (issue11)
+  * Fix keywords splitting (issue13)
+
+ --  <tokland@gmail.com>  Wed, 29 Sep 2010 11:31:18 +0200
+
 youtube-upload (0.4) unstable; urgency=low
 
   * issue7: fix for gdata 2.0.10
