@@ -15,6 +15,7 @@
 #
 # Author: Arnau Sanchez <tokland@gmail.com>
 # Website: http://code.google.com/p/tokland/
+# Website: http://code.google.com/p/youtube-upload
 
 """
 Upload videos to youtube from the command-line (splitting the video if necessary).
@@ -27,12 +28,14 @@ www.youtube.com/watch?v=pxzZ-fYjeYs
 import os
 import re
 import sys
+import time
 import locale
 import urllib
 import optparse
 import itertools
 import subprocess
-from xml.etree import ElementTree
+# python >= 2.6
+from xml.etree import ElementTree 
 
 # python-gdata (>= 1.2.4)
 import gdata.media
@@ -40,7 +43,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-VERSION = "0.4.1"
+VERSION = "0.5"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
@@ -54,6 +57,10 @@ def get_encoding():
     """Guess terminal encoding.""" 
     return sys.stdout.encoding or locale.getpreferredencoding()
 
+def compact(it):
+    """Filter false (in the truth sense) elements in iterator."""
+    return filter(bool, it)
+  
 def run(command, inputdata=None, **kwargs):
     """Run a command and return standard output/error"""
     debug("run: %s" % " ".join(command))
@@ -123,11 +130,18 @@ def split_youtube_video(video_path, split_rewind=5):
     """Split video to match Youtube restrictions (<2Gb and <15minutes)."""
     return split_video(video_path, 60*15, max_size=int(2e9), split_rewind=split_rewind)
 
+def get_entry_info(entry):      
+    """Return pair (url, id) for video entry."""
+    url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
+    video_id = re.search("=(.*)$", url).group(1)
+    return url, video_id
+
 class Youtube:
     """Interface the Youtube API."""        
     CATEGORIES_SCHEME = "http://gdata.youtube.com/schemas/2007/categories.cat"
     
-    def __init__(self, developer_key, email, password, source=None, client_id=None):
+    def __init__(self, developer_key, email, password, source="tokland-youtube_upload", 
+                 client_id="tokland-youtube_upload"):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
         service.ssl = False # SSL is not yet supported by Youtube API
@@ -157,6 +171,15 @@ class Youtube:
         playlist_video_entry = self.service.AddPlaylistVideoEntryToPlaylist(
             playlist_uri, video_id, title, description)
         return playlist_video_entry
+      
+    def check_upload_status(self, video_entry):
+        """
+        Check upload status of video entry.
+        
+        Return None if video is processed, and a pair (status, message) otherwise.
+        """
+        url, video_id = get_entry_info(video_entry)
+        return self.service.CheckUploadStatus(video_id=video_id)
            
     def _create_video_entry(self, title, description, category, keywords=None, 
             location=None, private=False):
@@ -190,12 +213,29 @@ class Youtube:
                 return (element.get("term"), element.get("label"))            
         xmldata = urllib.urlopen(cls.CATEGORIES_SCHEME).read()
         xml = ElementTree.XML(xmldata)
-        return dict(filter(bool, map(get_pair, xml)))
+        return dict(compact(map(get_pair, xml)))
 
 def parse_location(string):
     """Return tuple (long, latitude) from string with coordinates."""
     if string and string.strip():
         return map(float, string.split(",", 1))
+
+def wait_processing(yt, entry):
+    debug("waiting until video is processed")
+    while 1:
+        try:
+          response = yt.check_upload_status(entry)
+        except socket.gaierror, msg:
+          debug("network error (will retry): %s" % msg)
+          continue                      
+        if not response:
+            debug("video processed")
+            break
+        status, message = response
+        debug("check_upload_status: %s" % " - ".join(compact(response)))
+        if status != "processing":
+            break 
+        time.sleep(5)
     
 def main_upload(arguments):
     """Upload video to Youtube."""
@@ -203,6 +243,9 @@ def main_upload(arguments):
 
     Upload a video to youtube spliting it if necessary (uses ffmpeg)."""
     parser = optparse.OptionParser(usage, version=VERSION)
+    parser.add_option('-t', '--time-rewind', dest='split_rewind', type="int", 
+        default=5, metavar="SECONDS", 
+        help='Time to rewind between videos on split (default: 5 seconds)')
     parser.add_option('-c', '--get-categories', dest='get_categories',
         action="store_true", default=False, help='Show video categories')
     parser.add_option('-s', '--split-only', dest='split_only',
@@ -217,9 +260,8 @@ def main_upload(arguments):
         metavar="COORDINATES", help='Video location (lat, lon). example: "37.0,-122.0"')
     parser.add_option('', '--playlist-uri', dest='playlist_uri', type="string", default=None,
         metavar="URI", help='Upload video to playlist')
-    parser.add_option('', '--time-rewind', dest='split_rewind', type="int", 
-        default=5, metavar="SECONDS", 
-        help='Time to rewind between videos on split (default: 5 seconds)')
+    parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
+        default=False, help='Wait until the video has processed')
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
@@ -242,25 +284,27 @@ def main_upload(arguments):
               list(split_youtube_video(video_path, options.split_rewind)))
     debug("connecting to Youtube API")
     yt = Youtube(DEVELOPER_KEY, email, password)
+    
     for index, splitted_video_path in enumerate(videos):
         complete_title = ("%s [%d/%d]" % (title, index+1, len(videos)) 
                           if len(videos) > 1 else title)
         args = [splitted_video_path, complete_title, description, category, skeywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
         if options.get_upload_form_data:
-          data = yt.get_upload_form_data(*args, **kwargs)
-          print "\n".join([splitted_video_path, data["token"], data["post_url"]])
-          if options.playlist_uri:
-              debug("--playlist-uri is ignored on form upload")        
+            data = yt.get_upload_form_data(*args, **kwargs)
+            print "\n".join([splitted_video_path, data["token"], data["post_url"]])
+            if options.playlist_uri:
+                debug("--playlist-uri is ignored on form upload")        
         else:
-          debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
-          entry = yt.upload_video(*args, **kwargs)
-          url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
-          print url
-          video_id = re.search("=(.*)$", url).group(1)
-          if options.playlist_uri: 
-              debug("adding video (%s) to playlist: %s" % (video_id, options.playlist_uri))
-              yt.add_video_to_playlist(video_id, options.playlist_uri)
+            debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
+            entry = yt.upload_video(*args, **kwargs)                
+            url, video_id = get_entry_info(entry)                     
+            if options.wait_processing:
+                wait_processing(yt, entry)
+            print url
+            if options.playlist_uri:
+                debug("adding video (%s) to playlist: %s" % (video_id, options.playlist_uri))
+                yt.add_video_to_playlist(video_id, options.playlist_uri)
    
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
