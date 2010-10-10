@@ -1,25 +1,32 @@
 = Introduction =
 
-_Youtube-upload_ is a command-line script that uploads videos to Youtube (with metadata). If a video does not comply with Youtube limitations (<2Gb and <10'), it will be automatically splitted before uploading.
+_Youtube-upload_ is a command-line script that uploads videos to Youtube. If a video does not comply with Youtube limitations (<2Gb and <15'), it will be automatically splitted before uploading.
 
-_Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see the _dependecies_ section).
+_Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see the _dependecies_ section). You won't need FFmpeg if the video does not need splitting.
 
 = Dependencies =
 
   * [http://www.python.org python] (>= 2.5)
   * [http://code.google.com/p/gdata-python-client python-gdata] (>= 1.2.4)
-  * [http://ffmpeg.org/ ffmpeg] (with MKV support)
+  * [http://ffmpeg.org/ ffmpeg] with MKV support (only if splitting is needed)
 
 = Download & Install =
 
-  * [http://code.google.com/p/youtube-upload/downloads/list From sources] (UNIX instructions):
+  * [http://code.google.com/p/youtube-upload/downloads/list Stable release]:
 
 {{{
 $ wget http://youtube-upload.googlecode.com/files/youtube-upload-VERSION.tgz
 $ tar xvzf youtube-upload-VERSION.tgz
 $ cd youtube-upload-VERSION
-$ sudo cp youtube-upload/youtube-upload.py /usr/local/bin/youtube-upload
-$ sudo chmod +x /usr/local/bin/youtube-upload
+$ sudo python setup.py install
+}}}
+
+  * [http://code.google.com/p/youtube-upload/source/checkout From repository]:
+
+{{{
+$ svn checkout http://youtube-upload.googlecode.com/svn/trunk/ youtube-upload
+$ cd youtube-upload
+$ sudo python setup.py install
 }}}
 
 = Usage examples =
@@ -56,9 +63,9 @@ $ python youtube_upload/youtube_upload.py ...
 
 * Upload with _curl_
 
-The standard Google API does not give any feedback on the upload process nor allow the user to tweak it (limit the speed, use a proxy, ...). Fortunately, the API also provides an alternative upload method, a standard HTTP POST request, so we can easily use third-party applications to do the actual upload. 
+The Youtube API does not provide any feedback on the upload process nor allow the user to tweak it (limit the speed, use a proxy, ...). Fortunately, the API does provide an alternative upload  method (a HTTP POST), so we can easily use third-party applications to do the actual upload. 
 
-The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh])  that shows how to upload a video using _curl_. This command would upload _somevideo.flv_ with a limit rate of 100KBytes (notice the _-u_ option in _youtube-upload_):
+The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh]) that shows how to upload a video using _curl_. This command (UNIX-like operating systems only) would upload _somevideo.flv_ with a limit rate of 100KBytes (notice the _-u_ option in _youtube-upload_):
 
 {{{
 $ youtube-upload -u myemail@gmail.com mypassword somevideo.flv "Title" "Description" "Category" "tag1,tag2" |
@@ -67,6 +74,4 @@ $ youtube-upload -u myemail@gmail.com mypassword somevideo.flv "Title" "Descript
 
 = Feedback =
 
-To report a bug, propose an enhancement or even make a question, open a  [http://code.google.com/p/youtube-upload/issues/ new issue]. 
-
-Feel free to email me: tokland AT gmail.com.
+Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs.
