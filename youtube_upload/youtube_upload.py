@@ -18,10 +18,15 @@
 # Website: http://code.google.com/p/youtube-upload
 
 """
-Upload videos to youtube from the command-line (splitting the video if necessary).
+Upload videos to youtube from the command-line.
 
-$ youtube-upload myemail@gmail.com mypassword anne_sophie_mutter.flv \
-  "A.S. Mutter" "Anne Sophie Mutter plays Beethoven" Music "mutter, beethoven"
+$ youtube-upload --email=myemail@gmail.com \ 
+                 --password=mypassword \
+                 --title="A.S. Mutter playing" \
+                 --description="Anne Sophie Mutter plays Beethoven" \
+                 --category=Music \
+                 --keywords="mutter, beethoven" \
+                 anne_sophie_mutter.flv
 www.youtube.com/watch?v=pxzZ-fYjeYs
 """
 
@@ -33,7 +38,6 @@ import locale
 import urllib
 import optparse
 import itertools
-import subprocess
 # python >= 2.6
 from xml.etree import ElementTree 
 
@@ -53,82 +57,17 @@ def debug(obj):
                  if isinstance(obj, unicode) else obj)
     sys.stderr.write("--- " + string + "\n")
 
+def first(it):
+    """Return first element in iterable (None if empty)."""
+    return next(it, None)
+    
 def get_encoding():
     """Guess terminal encoding.""" 
     return sys.stdout.encoding or locale.getpreferredencoding()
 
 def compact(it):
     """Filter false (in the truth sense) elements in iterator."""
-    return filter(bool, it)
-  
-def run(command, inputdata=None, **kwargs):
-    """Run a command and return standard output/error"""
-    debug("run: %s" % " ".join(command))
-    popen = subprocess.Popen(command, **kwargs)
-    outputdata, errdata = popen.communicate(inputdata)
-    return outputdata, errdata
-
-def ffmpeg(*args, **kwargs):
-    """Run ffmpeg command and return standard error output."""
-    kwargs2 = {}
-    if "show_stderr" not in kwargs:
-        kwargs2["stderr"] = subprocess.PIPE
-    outputdata, errdata = run(["ffmpeg"] + list(args), **kwargs2)
-    return errdata
-
-def get_video_duration(video_path):
-    """Return video duration in seconds."""
-    errdata = ffmpeg("-i", video_path)
-    match = re.search(r"Duration:\s*(.*?),", errdata)
-    if not match:
-        return
-    strduration = match.group(1)
-    return sum(factor*float(value) for (factor, value) in 
-               zip((60*60, 60, 1), strduration.split(":")))
-
-def split_video(video_path, max_duration, max_size=None, split_rewind=0):
-    """Split video in chunks and yield path of splitted videos."""
-    if not os.path.isfile(video_path):
-        raise ValueError, "Video path not found: %s" % video_path
-    total_duration = get_video_duration(video_path)
-    assert total_duration
-    if total_duration <= max_duration and os.path.getsize(video_path) <= max_size:
-        yield video_path
-        return
-    base, extension = os.path.splitext(os.path.basename(video_path))
-    
-    debug("split_video: %s, total_duration=%02.f" % (video_path, total_duration))
-    offset = 0
-    for index in itertools.count(1): 
-        debug("split_video: index=%d, offset=%d (total=%d)" % 
-            (index, offset, total_duration))
-        output_path = "%s-%d.%s" % (base, index, "mkv")
-        temp_output_path = "%s-%d.%s" % (base, index, "partial.mkv")
-        if os.path.isfile(output_path) and get_video_duration(output_path):
-            debug("skipping existing file: %s" % output_path)
-        else:
-            args = ["-y", "-i", video_path]
-            if max_size:
-                args += ["-fs", str(int(max_size))]
-            args += ["-vcodec", "copy", "-acodec", "copy", "-ss", str(offset), 
-                     "-t", str(max_duration), temp_output_path]
-            err = ffmpeg(*args, **dict(show_stderr= True))
-            os.rename(temp_output_path, output_path)
-        yield output_path
-        size = os.path.getsize(output_path)
-        assert size
-        duration = get_video_duration(output_path)
-        assert duration
-        debug("chunk file size: %d (max: %d)" % (size, max_size))  
-        debug("chunk duration: %d (max: %d)" % (duration, max_duration))
-        if size < max_size and duration < max_duration:
-            debug("end of video reached: %d chunks created" % index)
-            break 
-        offset += duration - split_rewind
-
-def split_youtube_video(video_path, split_rewind=5):
-    """Split video to match Youtube restrictions (<2Gb and <15minutes)."""
-    return split_video(video_path, 60*15, max_size=int(2e9), split_rewind=split_rewind)
+    return filter(bool, it)  
 
 def get_entry_info(entry):      
     """Return pair (url, id) for video entry."""
@@ -182,7 +121,7 @@ class Youtube:
         return self.service.CheckUploadStatus(video_id=video_id)
            
     def _create_video_entry(self, title, description, category, keywords=None, 
-            location=None, private=False):
+                            location=None, private=False):
         assert self.service, "Youtube service object is not set"
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
@@ -239,20 +178,13 @@ def wait_processing(yt, entry):
     
 def main_upload(arguments):
     """Upload video to Youtube."""
-    usage = """Usage: %prog [OPTIONS] EMAIL PASSWORD FILE TITLE DESCRIPTION CATEGORY KEYWORDS
+    usage = """Usage: %prog [OPTIONS] video1 [video2 [...]]
 
-    Upload a video to youtube spliting it if necessary (uses ffmpeg)."""
+    Upload videos to youtube."""
     parser = optparse.OptionParser(usage, version=VERSION)
-    parser.add_option('-t', '--time-rewind', dest='split_rewind', type="int", 
-        default=5, metavar="SECONDS", 
-        help='Time to rewind between videos on split (default: 5 seconds)')
-    parser.add_option('-c', '--get-categories', dest='get_categories',
+    parser.add_option('', '--get-categories', dest='get_categories',
         action="store_true", default=False, help='Show video categories')
-    parser.add_option('-s', '--split-only', dest='split_only',
-        action="store_true", default=False, help='Split videos without uploading')
-    parser.add_option('-n', '--no-split', dest='no_split',
-        action="store_true", default=False, help='Skip video split')
-    parser.add_option('-u', '--get-upload-form-info', dest='get_upload_form_data',
+    parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
         action="store_true", default=False, help="Don't upload, just get the form info")
     parser.add_option('', '--private', dest='private',
         action="store_true", default=False, help='Set uploaded video as private')
@@ -262,41 +194,55 @@ def main_upload(arguments):
         metavar="URI", help='Upload video to playlist')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
         default=False, help='Wait until the video has processed')
+    
+    parser.add_option('-m', '--email', dest='email', type="string", 
+      help='Authentication email')
+    parser.add_option('-p', '--password', dest='password', type="string", 
+      help='Authentication password')
+    parser.add_option('-t', '--title', dest='title', type="string", 
+      help='Video title')
+    parser.add_option('-d', '--description', dest='description', type="string", 
+      help='Video description')
+    parser.add_option('-c', '--category', dest='category', type="string", 
+      help='Video category')
+    parser.add_option('', '--keywords', dest='keywords', type="string", 
+      help='Video keywords (comma-separated: tag1,tag2,...)')
+
     options, args = parser.parse_args(arguments)
+    videos = args
     
     if options.get_categories:
         print " ".join(Youtube.get_categories().keys())
         return
-    elif options.split_only:
-        video_path, = args
-        for path in split_youtube_video(video_path, options.split_rewind):
-            print path
-        return
-    elif len(args) != 7:
+    elif not args:
+        parser.print_usage()
+        return 1        
+    required_options = ["email", "password", "title", "category"]
+    missing = first(opt for opt in required_options if not getattr(options, opt)) 
+    if missing:
+        debug("Required option missing: %s" % missing)
         parser.print_usage()
         return 1
     
-    encoding = get_encoding()
-    email, password0, video_path, title, description, category, skeywords = \
-        [unicode(s, encoding) for s in args]
-    password = (sys.stdin.readline().strip() if password0 == "-" else password0)
-    videos = ([video_path] if options.no_split else 
-              list(split_youtube_video(video_path, options.split_rewind)))
+    encoding = get_encoding()    
+    password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
     debug("connecting to Youtube API")
-    yt = Youtube(DEVELOPER_KEY, email, password)
+    yt = Youtube(DEVELOPER_KEY, options.email, password)
     
-    for index, splitted_video_path in enumerate(videos):
-        complete_title = ("%s [%d/%d]" % (title, index+1, len(videos)) 
-                          if len(videos) > 1 else title)
-        args = [splitted_video_path, complete_title, description, category, skeywords]
+    for index, video_path in enumerate(videos):
+        complete_title = ("%s [%d/%d]" % (options.title, index+1, len(videos)) 
+                          if len(videos) > 1 else options.title)
+        args = [video_path, complete_title, options.description, 
+                options.category, options.keywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
+        
         if options.get_upload_form_data:
             data = yt.get_upload_form_data(*args, **kwargs)
-            print "\n".join([splitted_video_path, data["token"], data["post_url"]])
+            print "\n".join([video_path, data["token"], data["post_url"]])
             if options.playlist_uri:
                 debug("--playlist-uri is ignored on form upload")        
         else:
-            debug("start upload: %s (%s)" % (splitted_video_path, complete_title)) 
+            debug("start upload: %s (%s)" % (video_path, complete_title)) 
             entry = yt.upload_video(*args, **kwargs)                
             url, video_id = get_entry_info(entry)                     
             if options.wait_processing:

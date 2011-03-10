@@ -1,3 +1,10 @@
+youtube-upload (0.6) unstable; urgency=low
+
+  * Remove ffmpeg spliting (only limit now is <2GB)
+  * Move all arguments to options except video paths.
+
+ --  <tokland@gmail.com>  Thu, 10 Mar 2011 18:50:45 +0100
+
 youtube-upload (0.5) unstable; urgency=low
 
   * Update to new Youtube limits (15mins, 2Gb) 
