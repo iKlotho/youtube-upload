@@ -43,6 +43,7 @@ from xml.etree import ElementTree
 
 # python-gdata (>= 1.2.4)
 import gdata.media
+import gdata.service
 import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
@@ -79,20 +80,23 @@ class Youtube:
     """Interface the Youtube API."""        
     CATEGORIES_SCHEME = "http://gdata.youtube.com/schemas/2007/categories.cat"
     
-    def __init__(self, developer_key, email, password, source="tokland-youtube_upload", 
+    def __init__(self, developer_key, source="tokland-youtube_upload", 
                  client_id="tokland-youtube_upload"):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
         service.ssl = False # SSL is not yet supported by Youtube API
-        service.email = email
-        service.password = password
         service.source = source
         service.developer_key = developer_key
-        service.client_id = client_id
-        service.ProgrammaticLogin()
+        service.client_id = client_id        
         self.service = service
+    
+    def login(self, email, password, captcha_token=None, captcha_response=None):
+        """Login into youtube."""
+        self.service.email = email
+        self.service.password = password
+        self.service.ProgrammaticLogin(captcha_token, captcha_response)
         self.categories = self.get_categories()
-
+        
     def get_upload_form_data(self, path, *args, **kwargs):
         """Return dict with keys 'post_url' and 'token' with upload info."""
         video_entry = self._create_video_entry(*args, **kwargs)
@@ -122,7 +126,6 @@ class Youtube:
            
     def _create_video_entry(self, title, description, category, keywords=None, 
                             location=None, private=False):
-        assert self.service, "Youtube service object is not set"
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
             raise ValueError("Invalid category '%s' (valid: %s)" % (category, valid))
@@ -207,6 +210,11 @@ def main_upload(arguments):
       help='Video category')
     parser.add_option('', '--keywords', dest='keywords', type="string", 
       help='Video keywords (comma-separated: tag1,tag2,...)')
+      
+    parser.add_option('', '--captcha-token', dest='captcha_token', type="string", 
+      metavar="URL", help='Captcha token')
+    parser.add_option('', '--captcha-response', dest='captcha_response', type="string", 
+      metavar="STRING", help='Captcha response')
 
     options, args = parser.parse_args(arguments)
     videos = args
@@ -227,7 +235,15 @@ def main_upload(arguments):
     encoding = get_encoding()    
     password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
     debug("connecting to Youtube API")
-    yt = Youtube(DEVELOPER_KEY, options.email, password)
+    youtube = Youtube(DEVELOPER_KEY)    
+    try:
+        youtube.login(options.email, password, captcha_token=options.captcha_token,
+                      captcha_response=options.captcha_response)
+    except gdata.service.CaptchaRequired:
+        debug("We got a captcha request, look at this word image:\n%s" % youtube.service.captcha_url)
+        debug("Now re-run the same command adding these two options:\n" + 
+              "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
+        return 2
     
     for index, video_path in enumerate(videos):
         complete_title = ("%s [%d/%d]" % (options.title, index+1, len(videos)) 
@@ -237,20 +253,20 @@ def main_upload(arguments):
         kwargs = dict(private=options.private, location=parse_location(options.location))
         
         if options.get_upload_form_data:
-            data = yt.get_upload_form_data(*args, **kwargs)
+            data = youtube.get_upload_form_data(*args, **kwargs)
             print "\n".join([video_path, data["token"], data["post_url"]])
             if options.playlist_uri:
                 debug("--playlist-uri is ignored on form upload")        
         else:
             debug("start upload: %s (%s)" % (video_path, complete_title)) 
-            entry = yt.upload_video(*args, **kwargs)                
+            entry = youtube.upload_video(*args, **kwargs)                
             url, video_id = get_entry_info(entry)                     
             if options.wait_processing:
-                wait_processing(yt, entry)
+                wait_processing(youtube, entry)
             print url
             if options.playlist_uri:
                 debug("adding video (%s) to playlist: %s" % (video_id, options.playlist_uri))
-                yt.add_video_to_playlist(video_id, options.playlist_uri)
+                youtube.add_video_to_playlist(video_id, options.playlist_uri)
    
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
