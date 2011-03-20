@@ -63,7 +63,7 @@ def first(it):
     """Return first element in iterable (None if empty)."""
     try:
         it.next()
-    except StopItertation:
+    except StopIteration:
         pass
     
 def get_encoding():
@@ -105,7 +105,7 @@ class Youtube:
         """Return dict with keys 'post_url' and 'token' with upload info."""
         video_entry = self._create_video_entry(*args, **kwargs)
         post_url, token = self.service.GetFormUploadToken(video_entry)
-        debug("post url='%s', token='%s'" % (post_url, token))
+        #debug("post url='%s', token='%s'" % (post_url, token))
         return dict(post_url=post_url, token=token)
 
     def upload_video(self, path, *args, **kwargs):
@@ -260,7 +260,6 @@ def main_upload(arguments):
         namespace = dict(title=options.title, n=index+1, total=len(videos))
         complete_title = (string.Template(options.title_template).substitute(**namespace) 
                           if len(videos) > 1 else options.title)
-        print complete_title                          
         args = [video_path, complete_title, options.description, 
                 options.category, options.keywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
