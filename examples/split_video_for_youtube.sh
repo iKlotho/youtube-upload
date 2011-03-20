@@ -1,11 +1,17 @@
 #!/bin/bash
+#
+# Split a video file suitable for standard users in Youtube (<15')
+#
+# $ bash split_video_for_youtube.sh video.avi
+# $ youtube-upload video.part*.avi
+#
 set -e
 
 debug() { 
   echo "$@" >&2 
 }
 
-# Returns duration (in seconds) of video using ffmpeg.
+# Returns duration (in seconds) of a video (uses ffmpeg).
 # $1: video path
 get_video_duration() {
   read H M S DS < \
@@ -18,9 +24,16 @@ get_video_duration() {
 }
 
 # Main
+CHUNK_DURATION=900
+FFMPEG_DEFAULT_OPTIONS="-v 1 -sameq"
+
+if test $# -eq 0; then
+  debug "Usage: $(basename $0) VIDEO [EXTRA_OPTIONS_FOR_FFMPEG]"
+  exit 1
+fi
 
 VIDEO=$1
-CHUNK_DURATION=900
+shift 1
 
 EXTENSION=${VIDEO##*.}
 BASENAME=$(basename "$VIDEO" ".$EXTENSION")
@@ -31,13 +44,13 @@ if test $DURATION -le $CHUNK_DURATION; then
   echo "$VIDEO"
   exit 0
 fi
-
-debug "input file: $VIDEO ($DURATION seconds)"
+         
+debug "start split: $VIDEO ($DURATION seconds)"
 seq 0 $CHUNK_DURATION $DURATION | cat -n | while read INDEX OFFSET; do
   debug "$VIDEO: from position $OFFSET take $CHUNK_DURATION seconds"
   OUTPUT_FILE="${BASENAME}.part${INDEX}.avi"
   # using "-vcodec copy" I get unplayable videos, why?  
-  ffmpeg -v 1 -i "$VIDEO" -ss $OFFSET -t $CHUNK_DURATION -sameq \
+  ffmpeg $FFMPEG_DEFAULT_OPTIONS "$@" -i "$VIDEO" -ss $OFFSET -t $CHUNK_DURATION \
          -y "$OUTPUT_FILE" </dev/null 
   echo "$OUTPUT_FILE"
 done
