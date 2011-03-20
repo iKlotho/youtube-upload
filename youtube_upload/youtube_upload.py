@@ -14,8 +14,8 @@
 # along with Youtube-upload. If not, see <http://www.gnu.org/licenses/>.
 #
 # Author: Arnau Sanchez <tokland@gmail.com>
-# Website: http://code.google.com/p/tokland/
-# Website: http://code.google.com/p/youtube-upload
+# Websites: http://code.google.com/p/youtube-upload
+#           http://code.google.com/p/tokland/
 
 """
 Upload videos to youtube from the command-line.
@@ -34,6 +34,7 @@ import os
 import re
 import sys
 import time
+import string
 import locale
 import urllib
 import optparse
@@ -60,7 +61,10 @@ def debug(obj):
 
 def first(it):
     """Return first element in iterable (None if empty)."""
-    return next(it, None)
+    try:
+        it.next()
+    except StopItertation:
+        pass
     
 def get_encoding():
     """Guess terminal encoding.""" 
@@ -171,7 +175,7 @@ def wait_processing(yt, entry):
           debug("network error (will retry): %s" % msg)
           continue                      
         if not response:
-            debug("video processed")
+            debug("video is processed")
             break
         status, message = response
         debug("check_upload_status: %s" % " - ".join(compact(response)))
@@ -183,8 +187,27 @@ def main_upload(arguments):
     """Upload video to Youtube."""
     usage = """Usage: %prog [OPTIONS] video1 [video2 [...]]
 
-    Upload videos to youtube."""
+    Upload videos to youtube."""    
     parser = optparse.OptionParser(usage, version=VERSION)
+
+    # Required options
+    parser.add_option('-m', '--email', dest='email', type="string", 
+      help='Authentication user email')
+    parser.add_option('-p', '--password', dest='password', type="string", 
+      help='Authentication user password')
+    parser.add_option('-t', '--title', dest='title', type="string", 
+      help='Video title')
+    parser.add_option('-c', '--category', dest='category', type="string", 
+      help='Video category')
+      
+    parser.add_option('-d', '--description', dest='description', type="string", 
+        help='Video description')
+    parser.add_option('', '--keywords', dest='keywords', type="string", 
+        help='Video keywords (separated by commas: tag1,tag2,...)')
+    parser.add_option('', '--title-template', dest='title_template', type="string",
+        default="$title [$n/$total]", metavar="STRING", 
+        help='Title template on multiple videos (default: $title [$n/$total])')
+    
     parser.add_option('', '--get-categories', dest='get_categories',
         action="store_true", default=False, help='Show video categories')
     parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
@@ -192,27 +215,14 @@ def main_upload(arguments):
     parser.add_option('', '--private', dest='private',
         action="store_true", default=False, help='Set uploaded video as private')
     parser.add_option('', '--location', dest='location', type="string", default=None,
-        metavar="COORDINATES", help='Video location (lat, lon). example: "37.0,-122.0"')
+        metavar="LAT,LON", help='Video location (lat, lon). example: "43.3,5.42"')
     parser.add_option('', '--playlist-uri', dest='playlist_uri', type="string", default=None,
         metavar="URI", help='Upload video to playlist')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
-        default=False, help='Wait until the video has processed')
-    
-    parser.add_option('-m', '--email', dest='email', type="string", 
-      help='Authentication email')
-    parser.add_option('-p', '--password', dest='password', type="string", 
-      help='Authentication password')
-    parser.add_option('-t', '--title', dest='title', type="string", 
-      help='Video title')
-    parser.add_option('-d', '--description', dest='description', type="string", 
-      help='Video description')
-    parser.add_option('-c', '--category', dest='category', type="string", 
-      help='Video category')
-    parser.add_option('', '--keywords', dest='keywords', type="string", 
-      help='Video keywords (comma-separated: tag1,tag2,...)')
-      
+        default=False, help='Wait until the video has been processed')
+          
     parser.add_option('', '--captcha-token', dest='captcha_token', type="string", 
-      metavar="URL", help='Captcha token')
+      metavar="STRING", help='Captcha token')
     parser.add_option('', '--captcha-response', dest='captcha_response', type="string", 
       metavar="STRING", help='Captcha response')
 
@@ -228,7 +238,7 @@ def main_upload(arguments):
     required_options = ["email", "password", "title", "category"]
     missing = first(opt for opt in required_options if not getattr(options, opt)) 
     if missing:
-        debug("Required option missing: %s" % missing)
+        debug("Required option is missing: %s" % missing)
         parser.print_usage()
         return 1
     
@@ -240,14 +250,17 @@ def main_upload(arguments):
         youtube.login(options.email, password, captcha_token=options.captcha_token,
                       captcha_response=options.captcha_response)
     except gdata.service.CaptchaRequired:
-        debug("We got a captcha request, look at this word image:\n%s" % youtube.service.captcha_url)
-        debug("Now re-run the same command adding these two options:\n" + 
+        debug("We got a captcha request, look at this word image:\n%s" %
+              youtube.service.captcha_url)
+        debug("Now run the command adding these options (replace WORD with the actual captcha):\n" +
               "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
         return 2
     
     for index, video_path in enumerate(videos):
-        complete_title = ("%s [%d/%d]" % (options.title, index+1, len(videos)) 
+        namespace = dict(title=options.title, n=index+1, total=len(videos))
+        complete_title = (string.Template(options.title_template).substitute(**namespace) 
                           if len(videos) > 1 else options.title)
+        print complete_title                          
         args = [video_path, complete_title, options.description, 
                 options.category, options.keywords]
         kwargs = dict(private=options.private, location=parse_location(options.location))
