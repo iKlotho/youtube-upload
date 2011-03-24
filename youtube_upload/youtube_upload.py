@@ -58,13 +58,6 @@ def debug(obj):
     string = str(obj.encode(get_encoding(), "backslashreplace") 
                  if isinstance(obj, unicode) else obj)
     sys.stderr.write("--- " + string + "\n")
-
-def first(it):
-    """Return first element in iterable (None if empty)."""
-    try:
-        it.next()
-    except StopIteration:
-        pass
     
 def get_encoding():
     """Guess terminal encoding.""" 
@@ -236,9 +229,9 @@ def main_upload(arguments):
         parser.print_usage()
         return 1        
     required_options = ["email", "password", "title", "category"]
-    missing = first(opt for opt in required_options if not getattr(options, opt)) 
+    missing = [opt for opt in required_options if not getattr(options, opt)]
     if missing:
-        debug("Required option is missing: %s" % missing)
+        debug("Required option are missing: %s\n" % ", ".join(missing))
         parser.print_usage()
         return 1
     
