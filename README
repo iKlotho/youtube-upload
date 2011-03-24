@@ -1,14 +1,11 @@
 = Introduction =
 
-_Youtube-upload_ is a command-line script that uploads videos to Youtube. If a video does not comply with Youtube limitations (<2Gb and <15'), it will be automatically splitted before uploading.
-
-_Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python and FFmpeg (see the _dependecies_ section). You won't need FFmpeg if the video does not need splitting.
+_Youtube-upload_ is a command-line script that uploads videos to Youtube. If a video does not comply with Youtube limitations (<2Gb and <15') you must split it before using ffmpeg or any other tool. _Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python.
 
 = Dependencies =
 
   * [http://www.python.org python] (>= 2.5)
   * [http://code.google.com/p/gdata-python-client python-gdata] (>= 1.2.4)
-  * [http://ffmpeg.org/ ffmpeg] with MKV support (only if splitting is needed)
 
 = Download & Install =
 
@@ -74,4 +71,4 @@ $ youtube-upload -u myemail@gmail.com mypassword somevideo.flv "Title" "Descript
 
 = Feedback =
 
-Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs.
+Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs or suggest improvements.

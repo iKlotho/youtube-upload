@@ -1,7 +1,8 @@
 youtube-upload (0.6) unstable; urgency=low
 
-  * Remove ffmpeg spliting (only limit now is <2GB)
+  * Remove ffmpeg spliting from Python script (orthogonal task)
   * Move all arguments to options except video paths.
+  * Bash script to split videos: split_video_for_youtube.sh
 
  --  <tokland@gmail.com>  Thu, 10 Mar 2011 18:50:45 +0100
 

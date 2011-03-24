@@ -49,7 +49,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-VERSION = "0.5"
+VERSION = "0.6"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
