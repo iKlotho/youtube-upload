@@ -26,22 +26,31 @@ $ cd youtube-upload
 $ sudo python setup.py install
 }}}
 
-= Usage examples =
-
-* Upload a small video:
+  * If you don't want (or you can't) install software on the computer, run it directly from sources:
 
 {{{
-$ youtube-upload myemail@gmail.com mypassword somevideo.avi "Title" "Description" "Category" "tag1, tag2"
+$ cd youtube-upload-VERSION
+$ python youtube_upload/youtube_upload.py ...
+}}}
+
+
+= Usage examples =
+
+* Upload a video:
+
+{{{
+$ youtube-upload --email=myemail@gmail.com --password=mypassword 
+                 --title="A.S. Mutter" --description="A.S. Mutter plays Beethoven" 
+                 --category="Music" --keywords="mutter, beethoven" anne_sophie_mutter.flv
 www.youtube.com/watch?v=pxzZ-fYjeYs
 }}}
 
-* Upload a big video:
+* Upload a splited video:
 
 {{{
-$ youtube-upload myemail@gmail.com mypassword somebigvideo.flv "Title" "Description" "Category" "tag1, tag2"
-www.youtube.com/watch?v=pxzZ-fYjeYs
-www.youtube.com/watch?v=fe1s43-f1f8
-www.youtube.com/watch?v=9fgqref13ww
+$ youtube-upload [OPTIONS] video.part1.avi video.part2.avi
+www.youtube.com/watch?v=pxzZ-fYjeYs # title: TITLE [1/2]
+www.youtube.com/watch?v=pxzZ-fYsdff # title: TITLE [2/2]
 }}}
 
 * Get available categories:
@@ -51,22 +60,25 @@ $ youtube-upload -c
 Tech Education Animals People Travel Entertainment Howto Sports Autos Music News Games Nonprofit Comedy Film
 }}}
 
-If you don't want (or you can't) install software on the computer, run it directly from sources:
+* Split a video with _ffmpeg_
+
+Youtube currently limits videos > 2Gb and >15' (for some users). You can use the example Bash script to split it before uploading:
 
 {{{
-$ cd youtube-upload-VERSION
-$ python youtube_upload/youtube_upload.py ...
+$ bash examples/split_video_for_youtube.sh video.avi
+video.part1.avi
+video.part2.avi
+video.part3.avi
 }}}
 
-* Upload with _curl_
+* Upload videos with _curl_
 
 The Youtube API does not provide any feedback on the upload process nor allow the user to tweak it (limit the speed, use a proxy, ...). Fortunately, the API does provide an alternative upload  method (a HTTP POST), so we can easily use third-party applications to do the actual upload. 
 
 The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh]) that shows how to upload a video using _curl_. This command (UNIX-like operating systems only) would upload _somevideo.flv_ with a limit rate of 100KBytes (notice the _-u_ option in _youtube-upload_):
 
 {{{
-$ youtube-upload -u myemail@gmail.com mypassword somevideo.flv "Title" "Description" "Category" "tag1,tag2" |
-    bash examples/upload_with_curl.sh --limit-rate 100k
+$ youtube-upload -u [OPTIONS] | bash examples/upload_with_curl.sh --limit-rate 100k
 }}}
 
 = Feedback =

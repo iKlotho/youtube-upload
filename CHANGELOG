@@ -1,3 +1,9 @@
+youtube-upload (0.6.1) unstable; urgency=low
+
+  * fix issue with required options
+
+ --  <tokland@gmail.com>  Fri, 25 Mar 2011 21:01:29 +0100
+
 youtube-upload (0.6) unstable; urgency=low
 
   * Remove ffmpeg spliting from Python script (orthogonal task)

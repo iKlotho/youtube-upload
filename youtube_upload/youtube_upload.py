@@ -49,7 +49,7 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-VERSION = "0.6"
+VERSION = "0.6.1"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
@@ -213,7 +213,7 @@ def main_upload(arguments):
         metavar="URI", help='Upload video to playlist')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
         default=False, help='Wait until the video has been processed')
-          
+    # Captcha-related options          
     parser.add_option('', '--captcha-token', dest='captcha_token', type="string", 
       metavar="STRING", help='Captcha token')
     parser.add_option('', '--captcha-response', dest='captcha_response', type="string", 
