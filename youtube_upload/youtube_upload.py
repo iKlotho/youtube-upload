@@ -65,13 +65,16 @@ def get_encoding():
 
 def compact(it):
     """Filter false (in the truth sense) elements in iterator."""
-    return filter(bool, it)  
+    return filter(bool, it)
 
-def get_entry_info(entry):      
-    """Return pair (url, id) for video entry."""
-    url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
-    video_id = re.search("=(.*)$", url).group(1)
-    return url, video_id
+def tosize(seq, size):
+    """Return a list of fixed length from sequence (which may be shorter or longer)."""
+    return (seq[:size] if len(seq) >= size else (seq + [None] * (size-len(seq))))        
+    
+def first(it):
+    """Return first element in iterable."""
+    return it.next()
+    
 
 class Youtube:
     """Interface the Youtube API."""        
@@ -105,6 +108,12 @@ class Youtube:
         """Upload a video."""
         video_entry = self._create_video_entry(*args, **kwargs)
         return self.service.InsertVideoEntry(video_entry, path)
+
+    def create_playlist(self, title, description, private=False):
+        """Create a new playlist and return its uri."""
+        playlist = self.service.AddPlaylist(title, description, private)
+        #playlist.GetFeedLink() return None. Why?
+        return first(el.get("href") for el in playlist._ToElementTree() if "feedLink" in el.tag)
 
     def add_video_to_playlist(self, video_id, playlist_uri, title=None, description=None):
         """Add video to playlist."""
@@ -154,6 +163,13 @@ class Youtube:
         xml = ElementTree.XML(xmldata)
         return dict(compact(map(get_pair, xml)))
 
+
+def get_entry_info(entry):      
+    """Return pair (url, id) for video entry."""
+    url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
+    video_id = re.search("=(.*)$", url).group(1)
+    return url, video_id
+
 def parse_location(string):
     """Return tuple (long, latitude) from string with coordinates."""
     if string and string.strip():
@@ -178,7 +194,7 @@ def wait_processing(yt, entry):
     
 def main_upload(arguments):
     """Upload video to Youtube."""
-    usage = """Usage: %prog [OPTIONS] video1 [video2 [...]]
+    usage = """Usage: %prog [OPTIONS] VIDEO_PATH ...
 
     Upload videos to youtube."""    
     parser = optparse.OptionParser(usage, version=VERSION)
@@ -209,8 +225,11 @@ def main_upload(arguments):
         action="store_true", default=False, help='Set uploaded video as private')
     parser.add_option('', '--location', dest='location', type="string", default=None,
         metavar="LAT,LON", help='Video location (lat, lon). example: "43.3,5.42"')
-    parser.add_option('', '--playlist-uri', dest='playlist_uri', type="string", default=None,
-        metavar="URI", help='Upload video to playlist')
+    parser.add_option('', '--add-to-playlist', dest='add_to_playlist', type="string", default=None,
+        metavar="URI", help='Add video(s) to an existing playlist')
+    parser.add_option('', '--create-and-add-to-playlist', dest='create_playlist', type="string", 
+        default=None, metavar="TITLE|DESCRIPTION|PRIVATE (0=no, 1=yes)", 
+        help='Create new playlist and add uploaded video(s) to it')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
         default=False, help='Wait until the video has been processed')
     # Captcha-related options          
@@ -237,8 +256,9 @@ def main_upload(arguments):
     
     encoding = get_encoding()    
     password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
-    debug("connecting to Youtube API")
     youtube = Youtube(DEVELOPER_KEY)    
+    debug("Login to Youtube API: email='%s', password='%s'" % 
+          (options.email, "*" * len(password)))
     try:
         youtube.login(options.email, password, captcha_token=options.captcha_token,
                       captcha_response=options.captcha_response)
@@ -249,6 +269,7 @@ def main_upload(arguments):
               "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
         return 2
     
+    entries = []
     for index, video_path in enumerate(videos):
         namespace = dict(title=options.title, n=index+1, total=len(videos))
         complete_title = (string.Template(options.title_template).substitute(**namespace) 
@@ -260,18 +281,28 @@ def main_upload(arguments):
         if options.get_upload_form_data:
             data = youtube.get_upload_form_data(*args, **kwargs)
             print "\n".join([video_path, data["token"], data["post_url"]])
-            if options.playlist_uri:
-                debug("--playlist-uri is ignored on form upload")        
         else:
-            debug("start upload: %s (%s)" % (video_path, complete_title)) 
-            entry = youtube.upload_video(*args, **kwargs)                
-            url, video_id = get_entry_info(entry)                     
+            debug("Start video upload: %s (title: %s)" % (video_path, complete_title)) 
+            entry = youtube.upload_video(*args, **kwargs)
+            url, video_id = get_entry_info(entry)                
             if options.wait_processing:
                 wait_processing(youtube, entry)
-            print url
-            if options.playlist_uri:
-                debug("adding video (%s) to playlist: %s" % (video_id, options.playlist_uri))
-                youtube.add_video_to_playlist(video_id, options.playlist_uri)
-   
+            sys.stdout.write(url + "\n")
+            entries.append(entry)
+                                       
+    if entries and options.create_playlist:
+        title, description, private = tosize(options.create_playlist.split("|", 2), 3)
+        playlist_uri = youtube.create_playlist(title, description, (private == "1"))
+        debug("Playlist created: %s" % playlist_uri)
+        for entry in entries:
+            video_id = get_entry_info(entry)[1]
+            debug("Adding video (%s) to new playlist: %s" % (video_id, playlist_uri))
+            youtube.add_video_to_playlist(video_id, playlist_uri)
+    if options.add_to_playlist:
+        for entry in entries:
+            video_id = get_entry_info(entry)[1]
+            debug("Adding video (%s) to existing playlist: %s" % (video_id, options.add_to_playlist))
+            youtube.add_video_to_playlist(video_id, options.add_to_playlist)
+
 if __name__ == '__main__':
     sys.exit(main_upload(sys.argv[1:]))
