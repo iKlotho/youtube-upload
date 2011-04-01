@@ -262,12 +262,15 @@ def main_upload(arguments):
     try:
         youtube.login(options.email, password, captcha_token=options.captcha_token,
                       captcha_response=options.captcha_response)
+    except gdata.service.BadAuthentication:
+        debug("Bad authentication (check --email and --password options)")
+        return 2                      
     except gdata.service.CaptchaRequired:
         debug("We got a captcha request, look at this word image:\n%s" %
               youtube.service.captcha_url)
         debug("Now run the command adding these options (replace WORD with the actual captcha):\n" +
               "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
-        return 2
+        return 3
     
     entries = []
     for index, video_path in enumerate(videos):
