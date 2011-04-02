@@ -37,6 +37,7 @@ import time
 import string
 import locale
 import urllib
+import StringIO
 import optparse
 import itertools
 # python >= 2.6
@@ -48,6 +49,8 @@ import gdata.service
 import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
+
+import pycurl
 
 VERSION = "0.6.1"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
@@ -75,6 +78,25 @@ def first(it):
     """Return first element in iterable."""
     return it.next()
     
+def post(url, params):
+    def progress(download_t, download_d, upload_t, upload_d):
+        debug("%d/%d" % (upload_d, upload_t))
+    c = pycurl.Curl()
+    values = [(key, ((pycurl.FORM_FILE, value[1:]) if value.startswith("@") else value))
+              for (key, value) in params.iteritems()] 
+    c.setopt(c.URL, url + "?nexturl=http://code.google.com/p/youtube-upload")
+    c.setopt(c.HTTPPOST, values)
+    c.setopt(c.NOPROGRESS, 0)
+    c.setopt(c.PROGRESSFUNCTION, progress)
+    body_container = StringIO.StringIO()
+    headers_container = StringIO.StringIO()
+    c.setopt(c.WRITEFUNCTION, body_container.write)
+    c.setopt(c.HEADERFUNCTION, headers_container.write)
+    c.perform()
+    c.close()
+    headers = dict(map(str.strip, line.split(":", 1)) for line in 
+                   headers_container.getvalue().splitlines() if ":" in line)
+    return headers, body_container.getvalue()
 
 class Youtube:
     """Interface the Youtube API."""        
@@ -84,7 +106,7 @@ class Youtube:
                  client_id="tokland-youtube_upload"):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
-        service.ssl = False # SSL is not yet supported by Youtube API
+        service.ssl = False # SSL is not yet supported by the API
         service.source = source
         service.developer_key = developer_key
         service.client_id = client_id        
@@ -99,10 +121,9 @@ class Youtube:
         
     def get_upload_form_data(self, path, *args, **kwargs):
         """Return dict with keys 'post_url' and 'token' with upload info."""
-        video_entry = self._create_video_entry(*args, **kwargs)
-        post_url, token = self.service.GetFormUploadToken(video_entry)
-        #debug("post url='%s', token='%s'" % (post_url, token))
-        return dict(post_url=post_url, token=token)
+        entry = self._create_video_entry(*args, **kwargs)
+        post_url, token = self.service.GetFormUploadToken(entry)
+        return dict(entry=entry, post_url=post_url, token=token)
 
     def upload_video(self, path, *args, **kwargs):
         """Upload a video."""
@@ -219,6 +240,8 @@ def main_upload(arguments):
     
     parser.add_option('', '--get-categories', dest='get_categories',
         action="store_true", default=False, help='Show video categories')
+    parser.add_option('', '--api-upload', dest='api_upload',
+        action="store_true", default=False, help="Use the API upload instead of pycurl")
     parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
         action="store_true", default=False, help="Don't upload, just get the form info")
     parser.add_option('', '--private', dest='private',
@@ -284,14 +307,24 @@ def main_upload(arguments):
         if options.get_upload_form_data:
             data = youtube.get_upload_form_data(*args, **kwargs)
             print "\n".join([video_path, data["token"], data["post_url"]])
-        else:
+            continue
+        elif options.api_upload:
             debug("Start video upload: %s (title: %s)" % (video_path, complete_title)) 
             entry = youtube.upload_video(*args, **kwargs)
-            url, video_id = get_entry_info(entry)                
-            if options.wait_processing:
-                wait_processing(youtube, entry)
-            sys.stdout.write(url + "\n")
-            entries.append(entry)
+            url, video_id = get_entry_info(entry)
+        else: # upload with curl
+            data = youtube.get_upload_form_data(*args, **kwargs)
+            entry = data["entry"]
+            headers, body = post(data["post_url"], {"token": data["token"], "file": "@" + video_path})
+            params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
+            if params["status"] !=  "200":
+                debug("Unsuccessful HTTP status on upload: %s" % params["status"])
+                return 4
+            url = "http://www.youtube.com/watch?v=%s" % params["id"] 
+        if options.wait_processing:
+            wait_processing(youtube, entry)
+        sys.stdout.write(url + "\n")
+        entries.append(entry)
                                        
     if entries and options.create_playlist:
         title, description, private = tosize(options.create_playlist.split("|", 2), 3)
