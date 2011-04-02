@@ -89,7 +89,7 @@ def first(it):
     """Return first element in iterable."""
     return it.next()
     
-def post(url, files_params, extra_params):
+def post(url, files_params, extra_params, show_progressbar=True):
     """Post files to a given URL.""" 
     def progress(bar, maxval, download_t, download_d, upload_t, upload_d):
         bar.update(min(maxval, upload_d))
@@ -98,7 +98,7 @@ def post(url, files_params, extra_params):
             [(key, (pycurl.FORM_FILE, path)) for (key, path) in files_params.items()] 
     c.setopt(c.URL, url + "?nexturl=http://code.google.com/p/youtube-upload")
     c.setopt(c.HTTPPOST, items)
-    if progressbar:
+    if show_progressbar and progressbar:
         widgets = [
             progressbar.Percentage(), ' ', 
             progressbar.Bar(), ' ', 
@@ -109,7 +109,7 @@ def post(url, files_params, extra_params):
         bar = progressbar.ProgressBar(widgets=widgets, maxval=total_filesize)
         c.setopt(c.NOPROGRESS, 0)
         c.setopt(c.PROGRESSFUNCTION, lambda *args: progress(bar, total_filesize, *args))
-    else:
+    elif show_progressbar:
         debug("Install python-progressbar to see a nice progress bar")
     body_container = StringIO.StringIO()
     headers_container = StringIO.StringIO()
@@ -156,7 +156,7 @@ class Youtube:
     def create_playlist(self, title, description, private=False):
         """Create a new playlist and return its uri."""
         playlist = self.service.AddPlaylist(title, description, private)
-        #playlist.GetFeedLink() return None. Why?
+        #sadly playlist.GetFeedLink() returns None (why?)
         return first(el.get("href") for el in playlist._ToElementTree() if "feedLink" in el.tag)
 
     def add_video_to_playlist(self, video_id, playlist_uri, title=None, description=None):
@@ -248,48 +248,47 @@ def main_upload(arguments):
     parser.add_option('-p', '--password', dest='password', type="string", 
       help='Authentication user password')
     parser.add_option('-t', '--title', dest='title', type="string", 
-      help='Video title')
+      help='Video(s) title')
     parser.add_option('-c', '--category', dest='category', type="string", 
-      help='Video category')
+      help='Video(s) category')
       
     parser.add_option('-d', '--description', dest='description', type="string", 
-        help='Video description')
+        help='Video(s) description')
     parser.add_option('', '--keywords', dest='keywords', type="string", 
-        help='Video keywords (separated by commas: tag1,tag2,...)')
+        help='Video(s) keywords (separated by commas: tag1,tag2,...)')
     parser.add_option('', '--title-template', dest='title_template', type="string",
         default="$title [$n/$total]", metavar="STRING", 
-        help='Title template on multiple videos (default: $title [$n/$total])')
+        help='Title template to use on multiple videos (default: $title [$n/$total])')
     
     parser.add_option('', '--get-categories', dest='get_categories',
         action="store_true", default=False, help='Show video categories')
     parser.add_option('', '--api-upload', dest='api_upload',
         action="store_true", default=False, help="Use the API upload instead of pycurl")
     parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
-        action="store_true", default=False, help="Don't upload, just get the form info")
+        action="store_true", default=False, help="Don't upload, get the form info (PATH, TOKEN, URL)")
     parser.add_option('', '--private', dest='private',
-        action="store_true", default=False, help='Set uploaded video as private')
+        action="store_true", default=False, help='Set uploaded video(s) as private')
     parser.add_option('', '--location', dest='location', type="string", default=None,
-        metavar="LAT,LON", help='Video location (lat, lon). example: "43.3,5.42"')
+        metavar="LAT,LON", help='Video(s) location (lat, lon). example: "43.3,5.42"')
     parser.add_option('', '--add-to-playlist', dest='add_to_playlist', type="string", default=None,
         metavar="URI", help='Add video(s) to an existing playlist')
     parser.add_option('', '--create-and-add-to-playlist', dest='create_playlist', type="string", 
         default=None, metavar="TITLE|DESCRIPTION|PRIVATE (0=no, 1=yes)", 
         help='Create new playlist and add uploaded video(s) to it')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
-        default=False, help='Wait until the video has been processed')
-    # Captcha-related options          
+        default=False, help='Wait until the video(s) has been processed')
+
     parser.add_option('', '--captcha-token', dest='captcha_token', type="string", 
       metavar="STRING", help='Captcha token')
     parser.add_option('', '--captcha-response', dest='captcha_response', type="string", 
       metavar="STRING", help='Captcha response')
 
-    options, args = parser.parse_args(arguments)
-    videos = args
+    options, videos = parser.parse_args(arguments)
     
     if options.get_categories:
         print " ".join(Youtube.get_categories().keys())
         return
-    elif not args:
+    elif not videos:
         parser.print_usage()
         return 1        
     required_options = ["email", "password", "title", "category"]
