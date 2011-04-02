@@ -37,6 +37,7 @@ import time
 import string
 import locale
 import urllib
+import socket
 import StringIO
 import optparse
 import itertools
@@ -50,7 +51,17 @@ import gdata.geo
 import gdata.youtube
 import gdata.youtube.service
 
-import pycurl
+# http://pycurl.sourceforge.net/
+try:
+    import pycurl
+except ImportError:
+    pycurl = None
+
+# http://code.google.com/p/python-progressbar
+try:
+    import progressbar
+except ImportError:
+    progressbar = None
 
 VERSION = "0.6.1"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
@@ -78,16 +89,28 @@ def first(it):
     """Return first element in iterable."""
     return it.next()
     
-def post(url, params):
-    def progress(download_t, download_d, upload_t, upload_d):
-        debug("%d/%d" % (upload_d, upload_t))
+def post(url, files_params, extra_params):
+    """Post files to a given URL.""" 
+    def progress(bar, maxval, download_t, download_d, upload_t, upload_d):
+        bar.update(min(maxval, upload_d))
     c = pycurl.Curl()
-    values = [(key, ((pycurl.FORM_FILE, value[1:]) if value.startswith("@") else value))
-              for (key, value) in params.iteritems()] 
+    items = extra_params.items() + \
+            [(key, (pycurl.FORM_FILE, path)) for (key, path) in files_params.items()] 
     c.setopt(c.URL, url + "?nexturl=http://code.google.com/p/youtube-upload")
-    c.setopt(c.HTTPPOST, values)
-    c.setopt(c.NOPROGRESS, 0)
-    c.setopt(c.PROGRESSFUNCTION, progress)
+    c.setopt(c.HTTPPOST, items)
+    if progressbar:
+        widgets = [
+            progressbar.Percentage(), ' ', 
+            progressbar.Bar(), ' ', 
+            progressbar.ETA(), ' ', 
+            progressbar.FileTransferSpeed(),
+        ]
+        total_filesize = sum(os.path.getsize(path) for path in files_params.values())
+        bar = progressbar.ProgressBar(widgets=widgets, maxval=total_filesize)
+        c.setopt(c.NOPROGRESS, 0)
+        c.setopt(c.PROGRESSFUNCTION, lambda *args: progress(bar, total_filesize, *args))
+    else:
+        debug("Install python-progressbar to see a nice progress bar")
     body_container = StringIO.StringIO()
     headers_container = StringIO.StringIO()
     c.setopt(c.WRITEFUNCTION, body_container.write)
@@ -142,13 +165,12 @@ class Youtube:
             playlist_uri, video_id, title, description)
         return playlist_video_entry
       
-    def check_upload_status(self, video_entry):
+    def check_upload_status(self, video_id):
         """
-        Check upload status of video entry.
+        Check upload status of a video.
         
         Return None if video is processed, and a pair (status, message) otherwise.
         """
-        url, video_id = get_entry_info(video_entry)
         return self.service.CheckUploadStatus(video_id=video_id)
            
     def _create_video_entry(self, title, description, category, keywords=None, 
@@ -196,11 +218,11 @@ def parse_location(string):
     if string and string.strip():
         return map(float, string.split(",", 1))
 
-def wait_processing(yt, entry):
+def wait_processing(yt, video_id):
     debug("waiting until video is processed")
     while 1:
         try:
-          response = yt.check_upload_status(entry)
+          response = yt.check_upload_status(video_id)
         except socket.gaierror, msg:
           debug("network error (will retry): %s" % msg)
           continue                      
@@ -212,7 +234,7 @@ def wait_processing(yt, entry):
         if status != "processing":
             break 
         time.sleep(5)
-    
+   
 def main_upload(arguments):
     """Upload video to Youtube."""
     usage = """Usage: %prog [OPTIONS] VIDEO_PATH ...
@@ -308,21 +330,23 @@ def main_upload(arguments):
             data = youtube.get_upload_form_data(*args, **kwargs)
             print "\n".join([video_path, data["token"], data["post_url"]])
             continue
-        elif options.api_upload:
-            debug("Start video upload: %s (title: %s)" % (video_path, complete_title)) 
+        elif options.api_upload or not pycurl:
+            debug("Start upload using gdata API: %s" % video_path) 
             entry = youtube.upload_video(*args, **kwargs)
             url, video_id = get_entry_info(entry)
         else: # upload with curl
             data = youtube.get_upload_form_data(*args, **kwargs)
             entry = data["entry"]
-            headers, body = post(data["post_url"], {"token": data["token"], "file": "@" + video_path})
+            debug("Start upload using a HTTP post: %s" % video_path)
+            headers, body = post(data["post_url"], {"file": video_path}, {"token": data["token"]})
             params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
             if params["status"] !=  "200":
                 debug("Unsuccessful HTTP status on upload: %s" % params["status"])
                 return 4
-            url = "http://www.youtube.com/watch?v=%s" % params["id"] 
+            video_id = params["id"]                
+            url = "http://www.youtube.com/watch?v=%s" % video_id 
         if options.wait_processing:
-            wait_processing(youtube, entry)
+            wait_processing(youtube, video_id)
         sys.stdout.write(url + "\n")
         entries.append(entry)
                                        
