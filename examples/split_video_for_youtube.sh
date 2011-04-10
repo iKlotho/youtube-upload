@@ -16,7 +16,7 @@ debug() {
 
 # Returns duration (in seconds) of a video $1 (uses ffmpeg).
 get_video_duration() {
-  OUTPUT=$(ffmpeg2 -i "$1" -vframes 1 -f rawvideo -y /dev/null 2>&1) ||
+  OUTPUT=$(ffmpeg -i "$1" -vframes 1 -f rawvideo -y /dev/null 2>&1) ||
     { debug -e "get_video_duration: error running ffmpeg:\n$OUTPUT"; return 1; }
   DURATION=$(echo "$OUTPUT" | grep -m1 "^[[:space:]]*Duration:" |
     cut -d":" -f2- | cut -d"," -f1 | sed "s/[:\.]/ /g") || 
