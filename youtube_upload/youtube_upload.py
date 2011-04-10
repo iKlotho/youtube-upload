@@ -117,7 +117,7 @@ def post(url, files_params, extra_params, show_progressbar=True):
     c.setopt(c.HEADERFUNCTION, headers_container.write)
     c.perform()
     c.close()
-    headers = dict(map(str.strip, line.split(":", 1)) for line in 
+    headers = dict([s.strip() for s in line.split(":", 1)] for line in
                    headers_container.getvalue().splitlines() if ":" in line)
     return headers, body_container.getvalue()
 
@@ -232,7 +232,7 @@ def wait_processing(yt, video_id):
         status, message = response
         debug("check_upload_status: %s" % " - ".join(compact(response)))
         if status != "processing":
-            break 
+            break
         time.sleep(5)
    
 def main_upload(arguments):
@@ -251,7 +251,12 @@ def main_upload(arguments):
       help='Video(s) title')
     parser.add_option('-c', '--category', dest='category', type="string", 
       help='Video(s) category')
-      
+
+    # Side commands
+    parser.add_option('', '--get-categories', dest='get_categories',
+        action="store_true", default=False, help='Show video categories')
+
+    # Optional options
     parser.add_option('-d', '--description', dest='description', type="string", 
         help='Video(s) description')
     parser.add_option('', '--keywords', dest='keywords', type="string", 
@@ -259,17 +264,18 @@ def main_upload(arguments):
     parser.add_option('', '--title-template', dest='title_template', type="string",
         default="$title [$n/$total]", metavar="STRING", 
         help='Title template to use on multiple videos (default: $title [$n/$total])')
-    
-    parser.add_option('', '--get-categories', dest='get_categories',
-        action="store_true", default=False, help='Show video categories')
-    parser.add_option('', '--api-upload', dest='api_upload',
-        action="store_true", default=False, help="Use the API upload instead of pycurl")
-    parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
-        action="store_true", default=False, help="Don't upload, get the form info (PATH, TOKEN, URL)")
     parser.add_option('', '--private', dest='private',
         action="store_true", default=False, help='Set uploaded video(s) as private')
     parser.add_option('', '--location', dest='location', type="string", default=None,
         metavar="LAT,LON", help='Video(s) location (lat, lon). example: "43.3,5.42"')
+    
+    # Upload options
+    parser.add_option('', '--api-upload', dest='api_upload',
+        action="store_true", default=False, help="Use the API upload instead of pycurl")
+    parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
+        action="store_true", default=False, help="Don't upload, get the form info (PATH, TOKEN, URL)")
+        
+    # Playlist options
     parser.add_option('', '--add-to-playlist', dest='add_to_playlist', type="string", default=None,
         metavar="URI", help='Add video(s) to an existing playlist')
     parser.add_option('', '--create-and-add-to-playlist', dest='create_playlist', type="string", 
@@ -278,6 +284,7 @@ def main_upload(arguments):
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
         default=False, help='Wait until the video(s) has been processed')
 
+    # Captcha options
     parser.add_option('', '--captcha-token', dest='captcha_token', type="string", 
       metavar="STRING", help='Captcha token')
     parser.add_option('', '--captcha-response', dest='captcha_response', type="string", 
@@ -312,7 +319,7 @@ def main_upload(arguments):
     except gdata.service.CaptchaRequired:
         debug("We got a captcha request, look at this word image:\n%s" %
               youtube.service.captcha_url)
-        debug("Now run the command adding these options (replace WORD with the actual captcha):\n" +
+        debug("Run the command adding these options (replace WORD with the actual captcha):\n" +
               "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
         return 3
     
@@ -330,7 +337,9 @@ def main_upload(arguments):
             print "\n".join([video_path, data["token"], data["post_url"]])
             continue
         elif options.api_upload or not pycurl:
-            debug("Start upload using gdata API: %s" % video_path) 
+            if not options.api_upload:
+                debug("Install pycurl to upload file with HTTP")
+            debug("Start upload using basic gdata API: %s" % video_path) 
             entry = youtube.upload_video(*args, **kwargs)
             url, video_id = get_entry_info(entry)
         else: # upload with curl
