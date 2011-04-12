@@ -255,6 +255,9 @@ def main_upload(arguments):
     # Side commands
     parser.add_option('', '--get-categories', dest='get_categories',
         action="store_true", default=False, help='Show video categories')
+    parser.add_option('', '--create-playlist', dest='create_playlist', type="string", 
+        default=None, metavar="TITLE|DESCRIPTION|PRIVATE (0=no, 1=yes)", 
+        help='Create new playlist and add uploaded video(s) to it')
 
     # Optional options
     parser.add_option('-d', '--description', dest='description', type="string", 
@@ -278,9 +281,6 @@ def main_upload(arguments):
     # Playlist options
     parser.add_option('', '--add-to-playlist', dest='add_to_playlist', type="string", default=None,
         metavar="URI", help='Add video(s) to an existing playlist')
-    parser.add_option('', '--create-and-add-to-playlist', dest='create_playlist', type="string", 
-        default=None, metavar="TITLE|DESCRIPTION|PRIVATE (0=no, 1=yes)", 
-        help='Create new playlist and add uploaded video(s) to it')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true", 
         default=False, help='Wait until the video(s) has been processed')
 
@@ -293,18 +293,22 @@ def main_upload(arguments):
     options, videos = parser.parse_args(arguments)
     
     if options.get_categories:
-        print " ".join(Youtube.get_categories().keys())
+        sys.stdout.write(" ".join(Youtube.get_categories().keys()) + "\n")
         return
-    elif not videos:
-        parser.print_usage()
-        return 1        
-    required_options = ["email", "password", "title", "category"]
+    elif options.create_playlist:
+        required_options = ["email", "password"]
+    else:
+        if not videos:
+            parser.print_usage()
+            return 1    
+        required_options = ["email", "password", "title", "category"]
+                
     missing = [opt for opt in required_options if not getattr(options, opt)]
     if missing:
-        debug("Required option are missing: %s\n" % ", ".join(missing))
         parser.print_usage()
+        debug("Some required option are missing: %s" % ", ".join(missing))
         return 1
-    
+        
     encoding = get_encoding()    
     password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
     youtube = Youtube(DEVELOPER_KEY)    
@@ -322,6 +326,13 @@ def main_upload(arguments):
         debug("Run the command adding these options (replace WORD with the actual captcha):\n" +
               "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
         return 3
+
+    if options.create_playlist:
+        title, description, private = tosize(options.create_playlist.split("|", 2), 3)
+        playlist_uri = youtube.create_playlist(title, description, (private == "1"))
+        debug("Playlist created: %s" % playlist_uri)
+        sys.stdout.write(playlist_uri+"\n")
+        return         
     
     entries = []
     for index, video_path in enumerate(videos):
@@ -334,7 +345,7 @@ def main_upload(arguments):
         
         if options.get_upload_form_data:
             data = youtube.get_upload_form_data(*args, **kwargs)
-            print "\n".join([video_path, data["token"], data["post_url"]])
+            sys.stdout.write("\n".join([video_path, data["token"], data["post_url"]]) + "\n")
             continue
         elif options.api_upload or not pycurl:
             if not options.api_upload:
@@ -356,20 +367,11 @@ def main_upload(arguments):
         if options.wait_processing:
             wait_processing(youtube, video_id)
         sys.stdout.write(url + "\n")
-        entries.append(entry)
+        entries.append((video_id, url))
                                        
-    if entries and options.create_playlist:
-        title, description, private = tosize(options.create_playlist.split("|", 2), 3)
-        playlist_uri = youtube.create_playlist(title, description, (private == "1"))
-        debug("Playlist created: %s" % playlist_uri)
-        for entry in entries:
-            video_id = get_entry_info(entry)[1]
-            debug("Adding video (%s) to new playlist: %s" % (video_id, playlist_uri))
-            youtube.add_video_to_playlist(video_id, playlist_uri)
     if options.add_to_playlist:
-        for entry in entries:
-            video_id = get_entry_info(entry)[1]
-            debug("Adding video (%s) to existing playlist: %s" % (video_id, options.add_to_playlist))
+        for video_id, url in entries:
+            debug("Adding video (%s) to playlist: %s" % (video_id, options.add_to_playlist))
             youtube.add_video_to_playlist(video_id, options.add_to_playlist)
 
 if __name__ == '__main__':
