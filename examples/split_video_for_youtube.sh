@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Split a video file suitable for standard users in Youtube (<15')
+# Split a video file (to MKV format) suitable for standard users in Youtube (<15')
 #
 #   $ bash split_video_for_youtube.sh video.avi
 #   video.part1.mkv
@@ -22,7 +22,7 @@ get_video_duration() {
     cut -d":" -f2- | cut -d"," -f1 | sed "s/[:\.]/ /g") || 
     { debug -e "get_video_duration: error parsing duration:\n$OUTPUT"; return 1; }
   read HOURS MINUTES SECONDS DECISECONDS <<< "$DURATION"
-  expr $HOURS \* 3600 + $MINUTES \* 60 + $SECONDS      
+  echo $((10#$HOURS * 3600 + 10#$MINUTES * 60 + 10#$SECONDS))      
 }
 
 main() {
@@ -36,7 +36,6 @@ main() {
   shift 1
 
   DURATION=$(get_video_duration "$VIDEO")
-
   if test $DURATION -le $CHUNK_DURATION; then
     debug "no need to split, duartion $DURATION <= $CHUNK_DURATION"
     echo "$VIDEO"
@@ -45,11 +44,10 @@ main() {
 
   EXTENSION=${VIDEO##*.}
   BASENAME=$(basename "$VIDEO" ".$EXTENSION")           
-  debug "start  split: $VIDEO ($DURATION seconds)"
+  debug "start split: $VIDEO ($DURATION seconds)"
   seq 0 $CHUNK_DURATION $DURATION | cat -n | while read INDEX OFFSET; do
     debug "$VIDEO: from position $OFFSET take $CHUNK_DURATION seconds"
     OUTPUT_FILE="${BASENAME}.part${INDEX}.mkv"
-    # If I use "-vcodec copy" I get unplayable videos, why?  
     ffmpeg -v 1 -sameq -vcodec copy -acodec copy "$@" \
            -i "$VIDEO" -ss $OFFSET -t $CHUNK_DURATION -y "$OUTPUT_FILE" </dev/null 
     echo "$OUTPUT_FILE"
