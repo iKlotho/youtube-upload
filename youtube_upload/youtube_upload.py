@@ -341,7 +341,8 @@ def main_upload(arguments):
             youtube.add_video_to_playlist(video_id, options.add_to_playlist)
         return 
     
-    for index, video_path in enumerate(args):
+    videos = args
+    for index, video_path in enumerate(videos):
         namespace = dict(title=options.title, n=index+1, total=len(videos))
         complete_title = (string.Template(options.title_template).substitute(**namespace) 
                           if len(videos) > 1 else options.title)
