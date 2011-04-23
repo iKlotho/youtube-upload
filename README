@@ -75,10 +75,10 @@ video.part3.avi
 
 The Youtube API does not provide any feedback on the upload process nor allow the user to tweak it (limit the speed, use a proxy, ...). Fortunately, the API does provide an alternative upload  method (a HTTP POST), so we can easily use third-party applications to do the actual upload. 
 
-The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh]) that shows how to upload a video using _curl_. This command (UNIX-like operating systems only) would upload _somevideo.flv_ with a limit rate of 100KBytes (notice the _-u_ option in _youtube-upload_):
+The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh]) that shows how to upload a video using _curl_. This command (UNIX-like operating systems only) would upload _somevideo.flv_ with a limit rate of 100KBytes:
 
 {{{
-$ youtube-upload -u [OPTIONS] | bash examples/upload_with_curl.sh --limit-rate 100k
+$ youtube-upload --get-upload-form-info [OPTIONS] | bash examples/upload_with_curl.sh --limit-rate 100k
 }}}
 
 = Feedback =

@@ -1,3 +1,10 @@
+youtube-upload (0.6.2) unstable; urgency=low
+
+  * Add option to create playlist
+  * Add pycurl + progression bar
+
+ --  <tokland@gmail.com>  Sat, 23 Apr 2011 20:06:34 +0200
+
 youtube-upload (0.6.1) unstable; urgency=low
 
   * fix issue with required options
