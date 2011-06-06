@@ -367,7 +367,7 @@ def main_upload(arguments):
             debug("Start upload using a HTTP post: %s" % video_path)
             http_code, headers, body = \
                 post(data["post_url"], {"file": video_path}, {"token": data["token"]})
-            if http_code != 301:
+            if http_code != 302:
                 debug("Unsuccessful HTTP code on upload: %s" % http_code)
                 return 4                
             params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
