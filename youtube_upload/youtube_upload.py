@@ -116,10 +116,11 @@ def post(url, files_params, extra_params, show_progressbar=True):
     c.setopt(c.WRITEFUNCTION, body_container.write)
     c.setopt(c.HEADERFUNCTION, headers_container.write)
     c.perform()
+    http_code = c.getinfo(pycurl.HTTP_CODE)
     c.close()
     headers = dict([s.strip() for s in line.split(":", 1)] for line in
                    headers_container.getvalue().splitlines() if ":" in line)
-    return headers, body_container.getvalue()
+    return http_code, headers, body_container.getvalue()
 
 class Youtube:
     """Interface the Youtube API."""        
@@ -364,11 +365,15 @@ def main_upload(arguments):
             data = youtube.get_upload_form_data(*args, **kwargs)
             entry = data["entry"]
             debug("Start upload using a HTTP post: %s" % video_path)
-            headers, body = post(data["post_url"], {"file": video_path}, {"token": data["token"]})
+            http_code, headers, body = \
+                post(data["post_url"], {"file": video_path}, {"token": data["token"]})
+            if http_code != 200:
+                debug("Unsuccessful HTTP code on upload: %s" % http_code)
+                return 4                
             params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
             if params["status"] !=  "200":
-                debug("Unsuccessful HTTP status on upload: %s" % params["status"])
-                return 4
+                debug("Unsuccessful HTTP status on upload link: %s" % params["status"])
+                return 5
             video_id = params["id"]                
             url = "http://www.youtube.com/watch?v=%s" % video_id 
         if options.wait_processing:
