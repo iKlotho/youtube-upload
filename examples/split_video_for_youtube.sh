@@ -27,17 +27,17 @@ get_video_duration() {
 
 main() {
   set -e -u -o pipefail
-  CHUNK_DURATION=$((60*15))
   if test $# -eq 0; then
     debug "Usage: $(basename $0) VIDEO [EXTRA_OPTIONS_FOR_FFMPEG]"
     exit 1
   fi
+  CHUNK_DURATION=$((60*15))
   VIDEO=$1
   shift 1
 
   DURATION=$(get_video_duration "$VIDEO")
   if test $DURATION -le $CHUNK_DURATION; then
-    debug "no need to split, duartion $DURATION <= $CHUNK_DURATION"
+    debug "no need to split, duration of video: $DURATION <= $CHUNK_DURATION"
     echo "$VIDEO"
     exit 0
   fi
@@ -55,6 +55,4 @@ main() {
   done
 }
 
-if test "$NOEXEC" != 1; then
-  main "$@"
-fi
+test "$NOEXEC" = 1 || main "$@"
