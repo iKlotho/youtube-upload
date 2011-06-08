@@ -16,18 +16,17 @@
 # Author: Arnau Sanchez <tokland@gmail.com>
 # Websites: http://code.google.com/p/youtube-upload
 #           http://code.google.com/p/tokland/
-
 """
 Upload videos to youtube from the command-line.
 
-$ youtube-upload --email=myemail@gmail.com \ 
-                 --password=mypassword \
-                 --title="A.S. Mutter playing" \
-                 --description="Anne Sophie Mutter plays Beethoven" \
-                 --category=Music \
-                 --keywords="mutter, beethoven" \
-                 anne_sophie_mutter.flv
-www.youtube.com/watch?v=pxzZ-fYjeYs
+    $ youtube-upload --email=myemail@gmail.com \ 
+                     --password=mypassword \
+                     --title="A.S. Mutter playing" \
+                     --description="Anne Sophie Mutter plays Beethoven" \
+                     --category=Music \
+                     --keywords="mutter, beethoven" \
+                     anne_sophie_mutter.flv
+    www.youtube.com/watch?v=pxzZ-fYjeYs
 """
 
 import os
@@ -66,6 +65,16 @@ except ImportError:
 VERSION = "0.6.2"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
+EXIT_CODES = {
+    # Non-retryable
+    BadAuthentication: 1, 
+    VideoArgumentMissing: 2,
+    MissingOptions: 2,
+    InvalidCategory: 3,
+    # Retryable
+    UnsuccessHTTPResponseCode: 100,
+    CaptchaRequired: 101,  
+}
          
 class InvalidCategory(Exception): pass
 class VideoArgumentMissing(Exception): pass
@@ -80,16 +89,16 @@ def debug(obj):
                  if isinstance(obj, unicode) else obj)
     sys.stderr.write(string + "\n")
 
-def catch_exceptions(status_codes, fun, *args, **kwargs):
+def catch_exceptions(exit_codes, fun, *args, **kwargs):
     """
     Call fun(*args, **kwargs) while catching exceptions specified in dictionary
-    'status_codes' {ExceptionClass: status_code_to_return}.
+    'exit_codes' {ExceptionClass: exit_code_to_return}.
     """
     try:
         fun(*args, **kwargs)
-    except tuple(status_codes.keys()) as exc:
+    except tuple(exit_codes.keys()) as exc:
         debug("Error: %s -- %s" % (exc.__class__.__name__, exc))
-        return status_codes[exc.__class__]
+        return exit_codes[exc.__class__]
     
 def get_encoding():
     """Guess terminal encoding.""" 
@@ -398,14 +407,4 @@ def main_upload(arguments):
         sys.stdout.write(url + "\n")
 
 if __name__ == '__main__':
-    status_codes = {
-        # Non-retryable
-        BadAuthentication: 1, 
-        VideoArgumentMissing: 2,
-        MissingOptions: 2,
-        InvalidCategory: 3,
-        # Retryable
-        UnsuccessHTTPResponseCode: 100,
-        CaptchaRequired: 101,  
-    }
-    sys.exit(catch_exceptions(status_codes, main_upload, sys.argv[1:]))
+    sys.exit(catch_exceptions(EXIT_CODES, main_upload, sys.argv[1:]))
