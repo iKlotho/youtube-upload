@@ -67,11 +67,36 @@ VERSION = "0.6.2"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
+class BaseException(Exception):
+    def __init__(self, *messages):
+        self.messages = messages
+    def __str__(self):
+        return "\n".join(self.messages)
+           
+class InvalidCategory(BaseException): pass
+class VideoArgumentMissing(BaseException): pass
+class MissingOptions(BaseException): pass
+class BadAuthentication(BaseException): pass
+class CaptchaRequired(BaseException): pass
+class UnsuccessHTTPResponseCode(BaseException): pass   
+       
 def debug(obj):
     """Write obj to standard error."""
     string = str(obj.encode(get_encoding(), "backslashreplace") 
                  if isinstance(obj, unicode) else obj)
-    sys.stderr.write("--- " + string + "\n")
+    sys.stderr.write(string + "\n")
+
+def catch_exceptions(status_codes, fun, *args, **kwargs):
+    """
+    Call fun(*args, **kwargs) while catching exceptions specified i dictionary
+    'status_codes' {ExceptionClass: status_code}. On exception raise, return 
+    the matching integer, None if the call succeeds.
+    """
+    try:
+        fun(*args, **kwargs)
+    except tuple(status_codes.keys()) as exc:
+        debug("Error: %s -- %s" % (exc.__class__.__name__, exc))
+        return status_codes[exc.__class__]
     
 def get_encoding():
     """Guess terminal encoding.""" 
@@ -178,7 +203,7 @@ class Youtube:
                             location=None, private=False):
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
-            raise ValueError("Invalid category '%s' (valid: %s)" % (category, valid))
+            raise InvalidCategory("Invalid category '%s' (valid: %s)" % (category, valid))
         media_group = gdata.media.Group(
             title=gdata.media.Title(text=title),
             description=gdata.media.Description(description_type='plain', text=description),
@@ -301,14 +326,13 @@ def main_upload(arguments):
     else:
         if not args:
             parser.print_usage()
-            return 1    
+            raise VideoArgumentMissing("Specify a video file to upload")    
         required_options = ["email", "password", "title", "category"]
                 
     missing = [opt for opt in required_options if not getattr(options, opt)]
     if missing:
         parser.print_usage()
-        debug("Some required option are missing: %s" % ", ".join(missing))
-        return 1
+        raise MissingOptions("Some required option are missing: %s" % ", ".join(missing)) 
         
     encoding = get_encoding()    
     password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
@@ -319,14 +343,11 @@ def main_upload(arguments):
         youtube.login(options.email, password, captcha_token=options.captcha_token,
                       captcha_response=options.captcha_response)
     except gdata.service.BadAuthentication:
-        debug("Bad authentication (check --email and --password options)")
-        return 2                      
+        raise BadAuthentication("Wrong authentication")                      
     except gdata.service.CaptchaRequired:
-        debug("We got a captcha request, look at this word image:\n%s" %
-              youtube.service.captcha_url)
-        debug("Run the command adding these options (replace WORD with the actual captcha):\n" +
-              "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
-        return 3
+        raise CaptchaRequired("Captcha request:\n%s" % youtube.service.captcha_url,
+            "Run the command adding these options (replace WORD with the actual captcha):\n" +
+            "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
 
     if options.create_playlist:
         title, description, private = tosize(options.create_playlist.split("|", 2), 3)
@@ -357,7 +378,7 @@ def main_upload(arguments):
             continue
         elif options.api_upload or not pycurl:
             if not options.api_upload:
-                debug("Install pycurl to upload file with HTTP")
+                debug("Install pycurl to upload the video using HTTP")
             debug("Start upload using basic gdata API: %s" % video_path) 
             entry = youtube.upload_video(*args, **kwargs)
             url, video_id = get_entry_info(entry)
@@ -368,18 +389,25 @@ def main_upload(arguments):
             http_code, headers, body = \
                 post(data["post_url"], {"file": video_path}, {"token": data["token"]})
             if http_code != 302:
-                debug("Unsuccessful HTTP code on upload: %s (expected 302)" % http_code)
-                return 4                
+                raise UnsuccessHTTPResponseCode(
+                    "Unsuccessful HTTP code on upload: %d (expected 302)" % http_code)
             params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
             if params["status"] !=  "200":
-                debug("Unsuccessful HTTP status on upload link: %s" % params["status"])
-                return 5
+                raise UnsuccessHTTPResponseCode(
+                    "Unsuccessful HTTP status on upload link: %s" % params["status"])
             video_id = params["id"]                
             url = "http://www.youtube.com/watch?v=%s" % video_id 
         if options.wait_processing:
             wait_processing(youtube, video_id)
         sys.stdout.write(url + "\n")
-                                       
 
 if __name__ == '__main__':
-    sys.exit(main_upload(sys.argv[1:]))
+    status_codes = {
+        VideoArgumentMissing: 1,
+        MissingOptions: 1,
+        InvalidCategory: 2,
+        BadAuthentication: 3, 
+        CaptchaRequired: 4, 
+        UnsuccessHTTPResponseCode: 5,
+    }
+    sys.exit(catch_exceptions(status_codes, main_upload, sys.argv[1:]))
