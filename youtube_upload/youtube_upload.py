@@ -66,19 +66,13 @@ except ImportError:
 VERSION = "0.6.2"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
-
-class BaseException(Exception):
-    def __init__(self, *messages):
-        self.messages = messages
-    def __str__(self):
-        return "\n".join(self.messages)
-           
-class InvalidCategory(BaseException): pass
-class VideoArgumentMissing(BaseException): pass
-class MissingOptions(BaseException): pass
-class BadAuthentication(BaseException): pass
-class CaptchaRequired(BaseException): pass
-class UnsuccessHTTPResponseCode(BaseException): pass   
+         
+class InvalidCategory(Exception): pass
+class VideoArgumentMissing(Exception): pass
+class MissingOptions(Exception): pass
+class BadAuthentication(Exception): pass
+class CaptchaRequired(Exception): pass
+class UnsuccessHTTPResponseCode(Exception): pass   
        
 def debug(obj):
     """Write obj to standard error."""
@@ -88,9 +82,8 @@ def debug(obj):
 
 def catch_exceptions(status_codes, fun, *args, **kwargs):
     """
-    Call fun(*args, **kwargs) while catching exceptions specified i dictionary
-    'status_codes' {ExceptionClass: status_code}. On exception raise, return 
-    the matching integer, None if the call succeeds.
+    Call fun(*args, **kwargs) while catching exceptions specified in dictionary
+    'status_codes' {ExceptionClass: status_code_to_return}.
     """
     try:
         fun(*args, **kwargs)
@@ -345,9 +338,12 @@ def main_upload(arguments):
     except gdata.service.BadAuthentication:
         raise BadAuthentication("Wrong authentication")                      
     except gdata.service.CaptchaRequired:
-        raise CaptchaRequired("Captcha request:\n%s" % youtube.service.captcha_url,
-            "Run the command adding these options (replace WORD with the actual captcha):\n" +
-            "--captcha-token=%s --captcha-response=WORD" % youtube.service.captcha_token)
+        token = youtube.service.captcha_token
+        message = [
+            "Captcha request: %s" % youtube.service.captcha_url,
+            "Re-run the command: --captcha-token=%s --captcha-response=CAPTCHA" % token,
+        ]
+        raise CaptchaRequired("\n".join(message))
 
     if options.create_playlist:
         title, description, private = tosize(options.create_playlist.split("|", 2), 3)
@@ -403,11 +399,13 @@ def main_upload(arguments):
 
 if __name__ == '__main__':
     status_codes = {
-        VideoArgumentMissing: 1,
-        MissingOptions: 1,
-        InvalidCategory: 2,
-        BadAuthentication: 3, 
-        CaptchaRequired: 4, 
-        UnsuccessHTTPResponseCode: 5,
+        # Non-retryable
+        BadAuthentication: 1, 
+        VideoArgumentMissing: 2,
+        MissingOptions: 2,
+        InvalidCategory: 3,
+        # Retryable
+        UnsuccessHTTPResponseCode: 100,
+        CaptchaRequired: 101,  
     }
     sys.exit(catch_exceptions(status_codes, main_upload, sys.argv[1:]))
