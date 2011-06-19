@@ -59,29 +59,31 @@ except ImportError:
 # http://code.google.com/p/python-progressbar
 try:
     import progressbar
+    print progressbar.__file__
 except ImportError:
     progressbar = None
 
 VERSION = "0.6.2"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
+        
+class InvalidCategory(Exception): pass
+class VideoArgumentMissing(Exception): pass
+class OptionsMissing(Exception): pass
+class BadAuthentication(Exception): pass
+class CaptchaRequired(Exception): pass
+class UnsuccessHTTPResponseCode(Exception): pass   
+
 EXIT_CODES = {
     # Non-retryable
     BadAuthentication: 1, 
     VideoArgumentMissing: 2,
-    MissingOptions: 2,
+    OptionsMissing: 2,
     InvalidCategory: 3,
+    CaptchaRequired: 4,  
     # Retryable
     UnsuccessHTTPResponseCode: 100,
-    CaptchaRequired: 101,  
 }
-         
-class InvalidCategory(Exception): pass
-class VideoArgumentMissing(Exception): pass
-class MissingOptions(Exception): pass
-class BadAuthentication(Exception): pass
-class CaptchaRequired(Exception): pass
-class UnsuccessHTTPResponseCode(Exception): pass   
        
 def debug(obj):
     """Write obj to standard error."""
@@ -334,7 +336,7 @@ def main_upload(arguments):
     missing = [opt for opt in required_options if not getattr(options, opt)]
     if missing:
         parser.print_usage()
-        raise MissingOptions("Some required option are missing: %s" % ", ".join(missing)) 
+        raise OptionsMissing("Some required option are missing: %s" % ", ".join(missing)) 
         
     encoding = get_encoding()    
     password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
