@@ -59,7 +59,6 @@ except ImportError:
 # http://code.google.com/p/python-progressbar
 try:
     import progressbar
-    print progressbar.__file__
 except ImportError:
     progressbar = None
 
@@ -136,6 +135,7 @@ def post(url, files_params, extra_params, show_progressbar=True):
         ]
         total_filesize = sum(os.path.getsize(path) for path in files_params.values())
         bar = progressbar.ProgressBar(widgets=widgets, maxval=total_filesize)
+        bar.start()
         c.setopt(c.NOPROGRESS, 0)
         c.setopt(c.PROGRESSFUNCTION, lambda *args: progress(bar, total_filesize, *args))
     elif show_progressbar:
