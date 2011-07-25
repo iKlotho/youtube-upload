@@ -84,11 +84,11 @@ EXIT_CODES = {
     UnsuccessHTTPResponseCode: 100,
 }
        
-def debug(obj):
+def debug(obj, fd=sys.stderr):
     """Write obj to standard error."""
-    string = str(obj.encode(get_encoding(), "backslashreplace") 
+    string = str(obj.encode(get_encoding(fd), "backslashreplace") 
                  if isinstance(obj, unicode) else obj)
-    sys.stderr.write(string + "\n")
+    fd.write(string + "\n")
 
 def catch_exceptions(exit_codes, fun, *args, **kwargs):
     """
@@ -97,13 +97,14 @@ def catch_exceptions(exit_codes, fun, *args, **kwargs):
     """
     try:
         fun(*args, **kwargs)
+        return 0
     except tuple(exit_codes.keys()) as exc:
         debug("Error: %s -- %s" % (exc.__class__.__name__, exc))
         return exit_codes[exc.__class__]
     
-def get_encoding():
+def get_encoding(fd):
     """Guess terminal encoding.""" 
-    return sys.stdout.encoding or locale.getpreferredencoding()
+    return fd.encoding or locale.getpreferredencoding()
 
 def compact(it):
     """Filter false (in the truth sense) elements in iterator."""
@@ -122,8 +123,8 @@ def post(url, files_params, extra_params, show_progressbar=True):
     def progress(bar, maxval, download_t, download_d, upload_t, upload_d):
         bar.update(min(maxval, upload_d))
     c = pycurl.Curl()
-    items = extra_params.items() + \
-            [(key, (pycurl.FORM_FILE, path)) for (key, path) in files_params.items()] 
+    file_params2 = [(key, (pycurl.FORM_FILE, path)) for (key, path) in files_params.items()]
+    items = extra_params.items() + file_params2 
     c.setopt(c.URL, url + "?nexturl=http://code.google.com/p/youtube-upload")
     c.setopt(c.HTTPPOST, items)
     if show_progressbar and progressbar:
@@ -265,7 +266,7 @@ def wait_processing(yt, video_id):
             break
         time.sleep(5)
    
-def main_upload(arguments):
+def main_upload(arguments, output=sys.stdout):
     """Upload video to Youtube."""
     usage = """Usage: %prog [OPTIONS] VIDEO_PATH ...
 
@@ -274,13 +275,13 @@ def main_upload(arguments):
 
     # Required options
     parser.add_option('-m', '--email', dest='email', type="string", 
-      help='Authentication user email')
+        help='Authentication user email')
     parser.add_option('-p', '--password', dest='password', type="string", 
-      help='Authentication user password')
+        help='Authentication user password')
     parser.add_option('-t', '--title', dest='title', type="string", 
-      help='Video(s) title')
+        help='Video(s) title')
     parser.add_option('-c', '--category', dest='category', type="string", 
-      help='Video(s) category')
+        help='Video(s) category')
 
     # Side commands
     parser.add_option('', '--get-categories', dest='get_categories',
@@ -323,7 +324,7 @@ def main_upload(arguments):
     options, args = parser.parse_args(arguments)
     
     if options.get_categories:
-        sys.stdout.write(" ".join(Youtube.get_categories().keys()) + "\n")
+        output.write(" ".join(Youtube.get_categories().keys()) + "\n")
         return
     elif options.create_playlist or options.add_to_playlist:
         required_options = ["email", "password"]
@@ -338,7 +339,6 @@ def main_upload(arguments):
         parser.print_usage()
         raise OptionsMissing("Some required option are missing: %s" % ", ".join(missing)) 
         
-    encoding = get_encoding()    
     password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
     youtube = Youtube(DEVELOPER_KEY)    
     debug("Login to Youtube API: email='%s', password='%s'" % 
@@ -360,7 +360,7 @@ def main_upload(arguments):
         title, description, private = tosize(options.create_playlist.split("|", 2), 3)
         playlist_uri = youtube.create_playlist(title, description, (private == "1"))
         debug("Playlist created: %s" % playlist_uri)
-        sys.stdout.write(playlist_uri+"\n")
+        output.write(playlist_uri+"\n")
         return
 
     if options.add_to_playlist:
@@ -381,7 +381,7 @@ def main_upload(arguments):
         
         if options.get_upload_form_data:
             data = youtube.get_upload_form_data(*args, **kwargs)
-            sys.stdout.write("\n".join([video_path, data["token"], data["post_url"]]) + "\n")
+            output.write("\n".join([video_path, data["token"], data["post_url"]]) + "\n")
             continue
         elif options.api_upload or not pycurl:
             if not options.api_upload:
@@ -397,16 +397,16 @@ def main_upload(arguments):
                 post(data["post_url"], {"file": video_path}, {"token": data["token"]})
             if http_code != 302:
                 raise UnsuccessHTTPResponseCode(
-                    "Unsuccessful HTTP code on upload: %d (expected 302)" % http_code)
+                    "HTTP code on upload: %d (expected 302)" % http_code)
             params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
             if params["status"] !=  "200":
                 raise UnsuccessHTTPResponseCode(
-                    "Unsuccessful HTTP status on upload link: %s" % params["status"])
-            video_id = params["id"]                
-            url = "http://www.youtube.com/watch?v=%s" % video_id 
+                    "HTTP status on upload link: %s (expected 200)" % params["status"])
+            video_id = params["id"]
+            url = "http://www.youtube.com/watch?v=%s" % video_id
         if options.wait_processing:
             wait_processing(youtube, video_id)
-        sys.stdout.write(url + "\n")
+        output.write(url + "\n")
 
 if __name__ == '__main__':
     sys.exit(catch_exceptions(EXIT_CODES, main_upload, sys.argv[1:]))
