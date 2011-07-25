@@ -37,6 +37,7 @@ import string
 import locale
 import urllib
 import socket
+import getpass
 import StringIO
 import optparse
 import itertools
@@ -332,14 +333,19 @@ def main_upload(arguments, output=sys.stdout):
         if not args:
             parser.print_usage()
             raise VideoArgumentMissing("Specify a video file to upload")    
-        required_options = ["email", "password", "title", "category"]
+        required_options = ["email", "title", "category"]
                 
     missing = [opt for opt in required_options if not getattr(options, opt)]
     if missing:
         parser.print_usage()
         raise OptionsMissing("Some required option are missing: %s" % ", ".join(missing)) 
         
-    password = (sys.stdin.readline().strip() if options.password == "-" else options.password)
+    if options.password is None:
+        password = getpass.getpass("Password for account <%s>: " % options.email)    
+    elif options.password == "-":
+        password = sys.stdin.readline().strip()
+    else:
+        password = options.password
     youtube = Youtube(DEVELOPER_KEY)    
     debug("Login to Youtube API: email='%s', password='%s'" % 
           (options.email, "*" * len(password)))
