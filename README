@@ -4,7 +4,7 @@ _Youtube-upload_ is a command-line script that uploads videos to Youtube. If a v
 
 = Dependencies =
 
-  * [http://www.python.org python] (>= 2.5)
+  * [http://www.python.org python] (>= 2.6)
   * [http://code.google.com/p/gdata-python-client python-gdata] (>= 1.2.4)
 
 = Download & Install =
@@ -41,14 +41,14 @@ $ python youtube_upload/youtube_upload.py ...
 {{{
 $ youtube-upload --email=myemail@gmail.com --password=mypassword 
                  --title="A.S. Mutter" --description="A.S. Mutter plays Beethoven" 
-                 --category="Music" --keywords="mutter, beethoven" anne_sophie_mutter.flv
+                 --category=Music --keywords="mutter, beethoven" anne_sophie_mutter.flv
 www.youtube.com/watch?v=pxzZ-fYjeYs
 }}}
 
 * Upload a splited video:
 
 {{{
-$ youtube-upload [OPTIONS] video.part1.avi video.part2.avi
+$ youtube-upload [OPTIONS] --title="TITLE" video.part1.avi video.part2.avi
 www.youtube.com/watch?v=pxzZ-fYjeYs # title: TITLE [1/2]
 www.youtube.com/watch?v=pxzZ-fYsdff # title: TITLE [2/2]
 }}}
@@ -62,7 +62,7 @@ Tech Education Animals People Travel Entertainment Howto Sports Autos Music News
 
 * Split a video with _ffmpeg_
 
-Youtube currently limits videos > 2Gb and >15' (for some users). You can use the example Bash script to split it before uploading:
+Youtube currently limits videos to <2Gb and <15' for almost all users. You can use the Bash example script to split it before uploading:
 
 {{{
 $ bash examples/split_video_for_youtube.sh video.avi
@@ -73,9 +73,7 @@ video.part3.avi
 
 * Upload videos with _curl_
 
-The Youtube API does not provide any feedback on the upload process nor allow the user to tweak it (limit the speed, use a proxy, ...). Fortunately, the API does provide an alternative upload  method (a HTTP POST), so we can easily use third-party applications to do the actual upload. 
-
-The source code includes an example ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh]) that shows how to upload a video using _curl_. This command (UNIX-like operating systems only) would upload _somevideo.flv_ with a limit rate of 100KBytes:
+The script uses pycurl by default (when available) to upload the video, but if you need to tweak the upload parameters take a look at the Bash script included with the sources ([http://code.google.com/p/youtube-upload/source/browse/trunk/examples/upload_with_curl.sh examples/upload_with_curl.sh]). This command, for example, would upload _somevideo.flv_ with a limit rate of 100KBytes:
 
 {{{
 $ youtube-upload --get-upload-form-info [OPTIONS] | bash examples/upload_with_curl.sh --limit-rate 100k
@@ -83,4 +81,4 @@ $ youtube-upload --get-upload-form-info [OPTIONS] | bash examples/upload_with_cu
 
 = Feedback =
 
-Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs or suggest improvements.
+Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs or suggest improvements. If your problem relates to splitting videos with ffmpeg you may better refer to specialized forums or mailing lists.

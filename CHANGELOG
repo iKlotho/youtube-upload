@@ -1,3 +1,11 @@
+youtube-upload (0.7) unstable; urgency=low
+
+  * Prompt password when not specified in command line.
+  * Meaningful error codes. 
+  * Update to progressbar v2.3.
+
+ --  <tokland@gmail.com>  Thu, 11 Aug 2011 09:54:47 +0200
+
 youtube-upload (0.6.2) unstable; urgency=low
 
   * Add option to create playlist
