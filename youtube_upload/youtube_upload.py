@@ -100,7 +100,7 @@ def catch_exceptions(exit_codes, fun, *args, **kwargs):
         fun(*args, **kwargs)
         return 0
     except tuple(exit_codes.keys()) as exc:
-        debug("Error: %s -- %s" % (exc.__class__.__name__, exc))
+        debug("[%s] %s" % (exc.__class__.__name__, exc))
         return exit_codes[exc.__class__]
     
 def get_encoding(fd):
@@ -353,7 +353,7 @@ def main_upload(arguments, output=sys.stdout):
         youtube.login(options.email, password, captcha_token=options.captcha_token,
                       captcha_response=options.captcha_response)
     except gdata.service.BadAuthentication:
-        raise BadAuthentication("Wrong authentication")                      
+        raise BadAuthentication("Authentication failed")                      
     except gdata.service.CaptchaRequired:
         token = youtube.service.captcha_token
         message = [

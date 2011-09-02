@@ -6,16 +6,12 @@ from distutils.core import setup
 setup_kwargs = dict(
     name="youtube-upload",
     version=VERSION,
-    description="Upload videos to Youtube with automatic split",
+    description="Upload videos to Youtube from the command-line",
     author="Arnau Sanchez",
     author_email="tokland@gmail.com",
     url="http://code.google.com/p/youtube-upload/",
-    packages=[  
-        "youtube_upload/",
-    ],
-    scripts=[
-      "bin/youtube-upload",
-	  ],
+    packages=["youtube_upload/"],
+    scripts=["bin/youtube-upload"],
     license="GNU Public License v3.0",
     long_description=" ".join(__doc__.strip().splitlines()),
     classifiers=[
