@@ -63,26 +63,28 @@ try:
 except ImportError:
     progressbar = None
 
-VERSION = "0.7"
-DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
-                "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
-        
 class InvalidCategory(Exception): pass
 class VideoArgumentMissing(Exception): pass
 class OptionsMissing(Exception): pass
 class BadAuthentication(Exception): pass
 class CaptchaRequired(Exception): pass
-class UnsuccessHTTPResponseCode(Exception): pass   
+class ParseError(Exception): pass
+class UnsuccessfulHTTPResponseCode(Exception): pass   
 
+VERSION = "0.7"
+DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
+                "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
+        
 EXIT_CODES = {
     # Non-retryable
     BadAuthentication: 1, 
     VideoArgumentMissing: 2,
     OptionsMissing: 2,
     InvalidCategory: 3,
-    CaptchaRequired: 4,  
+    CaptchaRequired: 4, # retry with --captcha-token and --captcha-response options
+    ParseError: 5,  
     # Retryable
-    UnsuccessHTTPResponseCode: 100,
+    UnsuccessfulHTTPResponseCode: 100,
 }
        
 def debug(obj, fd=sys.stderr):
@@ -93,8 +95,8 @@ def debug(obj, fd=sys.stderr):
 
 def catch_exceptions(exit_codes, fun, *args, **kwargs):
     """
-    Call fun(*args, **kwargs) while catching exceptions specified in dictionary
-    'exit_codes' {ExceptionClass: exit_code_to_return}.
+    Wrap fun(*args, **kwargs) and catch raised exceptions specified in 
+    the dictionary exit_codes ({ExceptionClass: exit_code_to_return}).
     """
     try:
         fun(*args, **kwargs)
@@ -193,6 +195,10 @@ class Youtube:
 
     def add_video_to_playlist(self, video_id, playlist_uri, title=None, description=None):
         """Add video to playlist."""
+        expected = "http:\/\/gdata\.youtube\.com\/feeds\/api\/playlists/"
+        if not re.match("^" + expected, playlist_uri):
+            raise ParseError("expecting playlist feed URL (%s/ID), but got '%s'" % 
+                  (expected, playlist_uri))        
         playlist_video_entry = self.service.AddPlaylistVideoEntryToPlaylist(
             playlist_uri, video_id, title, description)
         return playlist_video_entry
@@ -239,10 +245,16 @@ class Youtube:
         return dict(compact(map(get_pair, xml)))
 
 
+def get_video_id_from_url(url):
+    match = re.search("v=(.*)$", url)
+    if not match:
+        raise ParseError("expecting a video URL (http://www.youtube.com?v=ID), but got '%s'" % url)
+    return match.group(1)
+
 def get_entry_info(entry):      
     """Return pair (url, id) for video entry."""
     url = entry.GetHtmlLink().href.replace("&feature=youtube_gdata", "")
-    video_id = re.search("v=(.*)$", url).group(1)
+    video_id = get_video_id_from_url(url)
     return url, video_id
 
 def parse_location(string):
@@ -358,7 +370,7 @@ def main_upload(arguments, output=sys.stdout):
         token = youtube.service.captcha_token
         message = [
             "Captcha request: %s" % youtube.service.captcha_url,
-            "Re-run the command: --captcha-token=%s --captcha-response=CAPTCHA" % token,
+            "Re-run the command with: --captcha-token=%s --captcha-response=CAPTCHA" % token,
         ]
         raise CaptchaRequired("\n".join(message))
 
@@ -372,7 +384,7 @@ def main_upload(arguments, output=sys.stdout):
     if options.add_to_playlist:
         for url in args:
             debug("Adding video (%s) to playlist: %s" % (url, options.add_to_playlist))
-            video_id = re.search("v=(.*)$", url).group(1)
+            video_id = get_video_id_from_url(url)
             youtube.add_video_to_playlist(video_id, options.add_to_playlist)
         return 
     
@@ -402,11 +414,11 @@ def main_upload(arguments, output=sys.stdout):
             http_code, headers, body = \
                 post(data["post_url"], {"file": video_path}, {"token": data["token"]})
             if http_code != 302:
-                raise UnsuccessHTTPResponseCode(
+                raise UnsuccessfulHTTPResponseCode(
                     "HTTP code on upload: %d (expected 302)" % http_code)
             params = dict(s.split("=", 1) for s in headers["Location"].split("?", 1)[1].split("&"))
             if params["status"] !=  "200":
-                raise UnsuccessHTTPResponseCode(
+                raise UnsuccessfulHTTPResponseCode(
                     "HTTP status on upload link: %s (expected 200)" % params["status"])
             video_id = params["id"]
             url = "http://www.youtube.com/watch?v=%s" % video_id
