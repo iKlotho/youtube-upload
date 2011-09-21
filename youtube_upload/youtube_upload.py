@@ -7,7 +7,7 @@
 #
 # Youtube-upload is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -15,9 +15,9 @@
 #
 # Author: Arnau Sanchez <tokland@gmail.com>
 # Websites: http://code.google.com/p/youtube-upload
-#           http://code.google.com/p/tokland/
+#           http://code.google.com/p/tokland
 """
-Upload videos to youtube from the command-line.
+Upload a video to Youtube from the command-line.
 
     $ youtube-upload --email=myemail@gmail.com \ 
                      --password=mypassword \
@@ -57,7 +57,7 @@ try:
 except ImportError:
     pycurl = None
 
-# http://code.google.com/p/python-progressbar
+# http://code.google.com/p/python-progressbar (>= 2.3)
 try:
     import progressbar
 except ImportError:
@@ -81,7 +81,7 @@ EXIT_CODES = {
     VideoArgumentMissing: 2,
     OptionsMissing: 2,
     InvalidCategory: 3,
-    CaptchaRequired: 4, # retry with --captcha-token and --captcha-response options
+    CaptchaRequired: 4, # retry with options --captcha-token and --captcha-response 
     ParseError: 5,  
     # Retryable
     UnsuccessfulHTTPResponseCode: 100,
@@ -246,6 +246,7 @@ class Youtube:
 
 
 def get_video_id_from_url(url):
+    """Return video ID from a Youtube URL."""
     match = re.search("v=(.*)$", url)
     if not match:
         raise ParseError("expecting a video URL (http://www.youtube.com?v=ID), but got '%s'" % url)
@@ -262,13 +263,14 @@ def parse_location(string):
     if string and string.strip():
         return map(float, string.split(",", 1))
 
-def wait_processing(yt, video_id):
+def wait_processing(youtube_obj, video_id):
+    """Wait until a video id recently uploaded has been procesed.""" 
     debug("waiting until video is processed")
     while 1:
         try:
-          response = yt.check_upload_status(video_id)
+          response = youtube_obj.check_upload_status(video_id)
         except socket.gaierror, msg:
-          debug("network error (will retry): %s" % msg)
+          debug("non-fatal network error: %s" % msg)
           continue                      
         if not response:
             debug("video is processed")

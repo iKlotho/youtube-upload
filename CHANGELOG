@@ -1,3 +1,9 @@
+youtube-upload (0.7.1svn) unstable; urgency=low
+
+  * Format checks on video URL and playlists
+
+ --  <tokland@gmail.com>  Wed, 14 Sep 2011 18:58:44 +0200
+
 youtube-upload (0.7) unstable; urgency=low
 
   * Prompt password when not specified in command line.
