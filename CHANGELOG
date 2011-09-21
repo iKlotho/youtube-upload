@@ -1,6 +1,7 @@
 youtube-upload (0.7.1svn) unstable; urgency=low
 
   * Format checks on video URL and playlists
+  * Add option --unlisted (issue60)
 
  --  <tokland@gmail.com>  Wed, 14 Sep 2011 18:58:44 +0200
 
