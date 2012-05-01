@@ -73,7 +73,7 @@ class CaptchaRequired(Exception): pass
 class ParseError(Exception): pass
 class UnsuccessfulHTTPResponseCode(Exception): pass
 
-VERSION = "0.7"
+VERSION = "0.7.1"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
                 "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
