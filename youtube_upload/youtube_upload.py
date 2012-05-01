@@ -146,6 +146,7 @@ def post(url, files_params, extra_params, show_progressbar=True):
         c.setopt(c.PROGRESSFUNCTION, lambda *args: progress(bar, total_filesize, *args))
     elif show_progressbar:
         debug("Install python-progressbar to see a nice progress bar")
+        bar = None
     body_container = StringIO.StringIO()
     headers_container = StringIO.StringIO()
     c.setopt(c.WRITEFUNCTION, body_container.write)
@@ -153,6 +154,8 @@ def post(url, files_params, extra_params, show_progressbar=True):
     c.perform()
     http_code = c.getinfo(pycurl.HTTP_CODE)
     c.close()
+    if bar:
+        bar.finish()
     headers = dict([s.strip() for s in line.split(":", 1)] for line in
                    headers_container.getvalue().splitlines() if ":" in line)
     return http_code, headers, body_container.getvalue()
@@ -276,7 +279,7 @@ def wait_processing(youtube_obj, video_id):
     while 1:
         try:
           response = youtube_obj.check_upload_status(video_id)
-        except socket.gaierror, msg:
+        except socket.gaierror as msg:
           debug("non-fatal network error: %s" % msg)
           continue
         if not response:
