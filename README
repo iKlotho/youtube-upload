@@ -1,11 +1,13 @@
 = Introduction =
 
-_Youtube-upload_ is a command-line script that uploads videos to Youtube. If a video does not comply with Youtube limitations (<2Gb and <15') you must split it before using ffmpeg or any other tool. _Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python.
+_Youtube-upload_ is a command-line script that uploads videos to Youtube. If a video does not comply with Youtube limitations (<15mins for a normal user) you must split it before using ffmpeg or any other tool. _Youtube-upload_ should work on any platform (GNU/Linux, BSD, OS X, Windows, ...) that runs Python.
 
 = Dependencies =
 
-  * [http://www.python.org python] (>= 2.6)
+  * [http://www.python.org python 2.6 or 2.7]
   * [http://code.google.com/p/gdata-python-client python-gdata] (>= 1.2.4)
+
+Note: You must have logged in at least once into your Youtube account prior to uploading any videos. 
 
 = Download & Install =
 
@@ -45,6 +47,14 @@ $ youtube-upload --email=myemail@gmail.com --password=mypassword
 www.youtube.com/watch?v=pxzZ-fYjeYs
 }}}
 
+* Upload the video using the Youtube API:
+
+{{{
+$ youtube-upload --api-upload [OTHER OPTIONS] file.flv
+}}}
+
+If you set explicitly the {{{--api-upload}}} options or {{{pycurl}}} isn't installed, the original Youtube API will be used to upload the video file. This method is not recommended because it does not shows the nice progressbar.
+
 * Upload a splited video:
 
 {{{
@@ -53,10 +63,18 @@ www.youtube.com/watch?v=pxzZ-fYjeYs # title: TITLE [1/2]
 www.youtube.com/watch?v=pxzZ-fYsdff # title: TITLE [2/2]
 }}}
 
+* Add a video to a playlist:
+
+{{{
+$ youtube-upload [OPTIONS] --add-to-playlist=http://gdata.youtube.com/feeds/api/playlists/7986C428284A40A1 http://www.youtube.com/watch?v=Zpqu97l3G1U
+}}}
+
+Note that the argument must be the video URL (not a local file) and the playlist is the URL of the feed (with no prefix "PL").
+
 * Get available categories:
 
 {{{
-$ youtube-upload -c
+$ youtube-upload --get-categories
 Tech Education Animals People Travel Entertainment Howto Sports Autos Music News Games Nonprofit Comedy Film
 }}}
 
@@ -81,4 +99,4 @@ $ youtube-upload --get-upload-form-info [OPTIONS] | bash examples/upload_with_cu
 
 = Feedback =
 
-Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs or suggest improvements. If your problem relates to splitting videos with ffmpeg you may better refer to specialized forums or mailing lists.
+Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] instead to report bugs or suggest improvements.
