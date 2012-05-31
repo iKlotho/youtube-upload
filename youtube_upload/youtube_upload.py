@@ -300,9 +300,9 @@ def main_upload(arguments, output=sys.stdout):
 
     # Required options
     parser.add_option('-m', '--email', dest='email', type="string",
-        help='Authentication user email')
+        help='Authentication email or Youtube username')
     parser.add_option('-p', '--password', dest='password', type="string",
-        help='Authentication user password')
+        help='Authentication password')
     parser.add_option('-t', '--title', dest='title', type="string",
         help='Video(s) title')
     parser.add_option('-c', '--category', dest='category', type="string",

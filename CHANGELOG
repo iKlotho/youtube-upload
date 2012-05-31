@@ -1,12 +1,18 @@
-youtube-upload (0.7.1) unstable; urgency=low
+youtube-upload (0.7.1+svn) stable; urgency=low
 
-  * Format checks on video URL and playlists
-  * Add option --unlisted (issue60)
-  * Fix progressbar on finish
+  * Change --email option help message.
 
- --  <tokland@gmail.com>  Wed, 14 Sep 2011 18:58:44 +0200
+ --  <tokland@gmail.com>  Wed, 31 May 2012 18:58:44 +0200
 
-youtube-upload (0.7) unstable; urgency=low
+youtube-upload (0.7.1) stable; urgency=low
+
+  * Format checks on video URL and playlists.
+  * Add option --unlisted (issue60).
+  * Fix progressbar on finish.
+
+ --  <tokland@gmail.com>  Wed, 1 May 2012 18:58:44 +0200
+
+youtube-upload (0.7) stable; urgency=low
 
   * Prompt password when not specified in command line.
   * Meaningful error codes. 
