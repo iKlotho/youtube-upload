@@ -251,7 +251,7 @@ class Youtube:
             """Return pair (term, label) for a (non-deprecated) XML element."""
             if all(not(str(x.tag).endswith("deprecated")) for x in element.getchildren()):
                 return (element.get("term"), element.get("label"))
-        xmldata = urllib.urlopen(cls.CATEGORIES_SCHEME).read()
+        xmldata = str(urllib.urlopen(cls.CATEGORIES_SCHEME).read())
         xml = ElementTree.XML(xmldata)
         return dict(compact(map(get_pair, xml)))
 
