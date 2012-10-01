@@ -75,7 +75,7 @@ class UnsuccessfulHTTPResponseCode(Exception): pass
 
 VERSION = "0.7.1"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
-                "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
+  "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
 EXIT_CODES = {
     # Non-retryable
@@ -92,7 +92,7 @@ EXIT_CODES = {
 def debug(obj, fd=sys.stderr):
     """Write obj to standard error."""
     string = str(obj.encode(get_encoding(fd), "backslashreplace")
-                 if isinstance(obj, unicode) else obj)
+        if isinstance(obj, unicode) else obj)
     fd.write(string + "\n")
 
 def catch_exceptions(exit_codes, fun, *args, **kwargs):
@@ -157,7 +157,7 @@ def post(url, files_params, extra_params, show_progressbar=True):
     if bar:
         bar.finish()
     headers = dict([s.strip() for s in line.split(":", 1)] for line in
-                   headers_container.getvalue().splitlines() if ":" in line)
+      headers_container.getvalue().splitlines() if ":" in line)
     return http_code, headers, body_container.getvalue()
 
 class Youtube:
@@ -165,7 +165,7 @@ class Youtube:
     CATEGORIES_SCHEME = "http://gdata.youtube.com/schemas/2007/categories.cat"
 
     def __init__(self, developer_key, source="tokland-youtube_upload",
-                 client_id="tokland-youtube_upload"):
+            client_id="tokland-youtube_upload"):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
         service.ssl = False # SSL is not yet supported by the API
@@ -217,7 +217,7 @@ class Youtube:
         return self.service.CheckUploadStatus(video_id=video_id)
 
     def _create_video_entry(self, title, description, category, keywords=None,
-                            location=None, private=False, unlisted=False):
+            location=None, private=False, unlisted=False):
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
             raise InvalidCategory("Invalid category '%s' (valid: %s)" % (category, valid))
@@ -237,11 +237,12 @@ class Youtube:
         else:
             where = None
         kwargs = {
-          "namespace": YOUTUBE_NAMESPACE,
-          "attributes": {'action': 'list', 'permission': 'denied'},
+            "namespace": YOUTUBE_NAMESPACE,
+            "attributes": {'action': 'list', 'permission': 'denied'},
         }
         extension = ([ExtensionElement('accessControl', **kwargs)] if unlisted else None)
-        return gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where, extension_elements=extension)
+        return gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where,
+            extension_elements=extension)
 
     @classmethod
     def get_categories(cls):
