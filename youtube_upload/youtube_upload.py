@@ -27,6 +27,14 @@ Upload a video to Youtube from the command-line.
                      --keywords="mutter, beethoven" \
                      anne_sophie_mutter.flv
     www.youtube.com/watch?v=pxzZ-fYjeYs
+    
+    $ youtube-upload --refresh_token=1/2323s23qsad \
+                     --title="A.S. Mutter playing" \
+                     --description="Anne Sophie Mutter plays Beethoven" \
+                     --category=Music \
+                     --keywords="mutter, beethoven" \
+                     anne_sophie_mutter.flv
+    www.youtube.com/watch?v=pxzZ-fYjeYs
 """
 
 import os
@@ -65,6 +73,8 @@ try:
 except ImportError:
     progressbar = None
 
+import AuthenticationWrapper as authwrapper
+
 class InvalidCategory(Exception): pass
 class VideoArgumentMissing(Exception): pass
 class OptionsMissing(Exception): pass
@@ -74,8 +84,13 @@ class ParseError(Exception): pass
 class UnsuccessfulHTTPResponseCode(Exception): pass
 
 VERSION = "0.7.1"
-DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
-  "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
+DEVELOPER_KEY = "DEVELOPER_KEY"
+APP_NAME = "APP_NAME"
+
+# OAuth Client ID and Client Secrets can be obtained from
+# https://developers.google.com/youtube/2.0/developers_guide_protocol_oauth2#OAuth2_Authentication
+OAUTH_CLIENT_ID = "CLIENT_ID"
+OAUTH_CLIENT_SECRET = "CLIENT_SECRET"
 
 EXIT_CODES = {
     # Non-retryable
@@ -92,7 +107,7 @@ EXIT_CODES = {
 def debug(obj, fd=sys.stderr):
     """Write obj to standard error."""
     string = str(obj.encode(get_encoding(fd), "backslashreplace")
-        if isinstance(obj, unicode) else obj)
+                 if isinstance(obj, unicode) else obj)
     fd.write(string + "\n")
 
 def catch_exceptions(exit_codes, fun, *args, **kwargs):
@@ -149,13 +164,15 @@ def post(url, files_params, extra_params, show_progressbar=True):
         bar = None
     body_container = StringIO.StringIO()
     headers_container = StringIO.StringIO()
+    c.setopt(c.WRITEFUNCTION, body_container.write)
+    c.setopt(c.HEADERFUNCTION, headers_container.write)
     c.perform()
     http_code = c.getinfo(pycurl.HTTP_CODE)
     c.close()
     if bar:
         bar.finish()
     headers = dict([s.strip() for s in line.split(":", 1)] for line in
-      headers_container.getvalue().splitlines() if ":" in line)
+                   headers_container.getvalue().splitlines() if ":" in line)
     return http_code, headers, body_container.getvalue()
 
 class Youtube:
@@ -163,7 +180,7 @@ class Youtube:
     CATEGORIES_SCHEME = "http://gdata.youtube.com/schemas/2007/categories.cat"
 
     def __init__(self, developer_key, source="tokland-youtube_upload",
-            client_id="tokland-youtube_upload"):
+                 client_id="tokland-youtube_upload"):
         """Login and preload available categories."""
         service = gdata.youtube.service.YouTubeService()
         service.ssl = False # SSL is not yet supported by the API
@@ -171,6 +188,9 @@ class Youtube:
         service.developer_key = developer_key
         service.client_id = client_id
         self.service = service
+        self._developer_key = developer_key
+        self._app_name = source
+        self._client_id = client_id
 
     def login(self, email, password, captcha_token=None, captcha_response=None):
         """Login into youtube."""
@@ -179,6 +199,29 @@ class Youtube:
         self.service.ProgrammaticLogin(captcha_token, captcha_response)
         self.categories = self.get_categories()
 
+    def perform_client_login(self, email, password):
+        self._setup_client_login(email, password)
+        self._perform_login()
+
+    def perform_oauth_login(self, refresh_token, oauth_client_id, oauth_client_secret):
+        self._setup_oauth_login(refresh_token, oauth_client_id, oauth_client_secret)
+        self._perform_login()
+
+    def _setup_client_login(self, email, password):
+        client_login = authwrapper.CredentialAuthenticatedWrapper(self._developer_key, self._app_name, email, password)
+        self._authenticated_wrapper = client_login
+        pass
+    
+    def _setup_oauth_login(self, refresh_token, oauth_client_id, oauth_client_secret):
+        token_login = authwrapper.TokenAuthenticatedWrapper(self._developer_key, self._app_name, refresh_token, oauth_client_id, oauth_client_secret)
+        self._authenticated_wrapper = token_login
+        pass
+    
+    def _perform_login(self):
+        self._authenticated_wrapper.authenticate()
+        self.service = self._authenticated_wrapper.youtube_service
+        self.categories = self.get_categories()
+    
     def get_upload_form_data(self, path, *args, **kwargs):
         """Return dict with keys 'post_url' and 'token' with upload info."""
         entry = self._create_video_entry(*args, **kwargs)
@@ -215,7 +258,7 @@ class Youtube:
         return self.service.CheckUploadStatus(video_id=video_id)
 
     def _create_video_entry(self, title, description, category, keywords=None,
-            location=None, private=False, unlisted=False):
+                            location=None, private=False, unlisted=False):
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
             raise InvalidCategory("Invalid category '%s' (valid: %s)" % (category, valid))
@@ -235,12 +278,11 @@ class Youtube:
         else:
             where = None
         kwargs = {
-            "namespace": YOUTUBE_NAMESPACE,
-            "attributes": {'action': 'list', 'permission': 'denied'},
+          "namespace": YOUTUBE_NAMESPACE,
+          "attributes": {'action': 'list', 'permission': 'denied'},
         }
         extension = ([ExtensionElement('accessControl', **kwargs)] if unlisted else None)
-        return gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where,
-            extension_elements=extension)
+        return gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where, extension_elements=extension)
 
     @classmethod
     def get_categories(cls):
@@ -249,7 +291,7 @@ class Youtube:
             """Return pair (term, label) for a (non-deprecated) XML element."""
             if all(not(str(x.tag).endswith("deprecated")) for x in element.getchildren()):
                 return (element.get("term"), element.get("label"))
-        xmldata = str(urllib.urlopen(cls.CATEGORIES_SCHEME).read())
+        xmldata = urllib.urlopen(cls.CATEGORIES_SCHEME).read()
         xml = ElementTree.XML(xmldata)
         return dict(compact(map(get_pair, xml)))
 
@@ -299,13 +341,16 @@ def main_upload(arguments, output=sys.stdout):
 
     # Required options
     parser.add_option('-m', '--email', dest='email', type="string",
-        help='Authentication email or Youtube username')
+        help='Authentication user email')
     parser.add_option('-p', '--password', dest='password', type="string",
-        help='Authentication password')
+        help='Authentication user password')
     parser.add_option('-t', '--title', dest='title', type="string",
         help='Video(s) title')
     parser.add_option('-c', '--category', dest='category', type="string",
         help='Video(s) category')
+
+    # OAuth options
+    parser.add_option('-r', '--refresh_token', dest='refresh_token', type="string", help='Oauth refresh token')
 
     # Side commands
     parser.add_option('', '--get-categories', dest='get_categories',
@@ -349,44 +394,62 @@ def main_upload(arguments, output=sys.stdout):
 
     options, args = parser.parse_args(arguments)
 
+    email_value = options.email
+    refresh_token = options.refresh_token
+    
     if options.get_categories:
         output.write(" ".join(Youtube.get_categories().keys()) + "\n")
         return
-    elif options.create_playlist or options.add_to_playlist:
-        required_options = ["email", "password"]
     else:
-        if not args:
+        if email_value == None and refresh_token == None:
             parser.print_usage()
-            raise VideoArgumentMissing("Specify a video file to upload")
-        required_options = ["email", "title", "category"]
-
-    missing = [opt for opt in required_options if not getattr(options, opt)]
-    if missing:
-        parser.print_usage()
-        raise OptionsMissing("Some required option are missing: %s" % ", ".join(missing))
-
-    if options.password is None:
-        password = getpass.getpass("Password for account <%s>: " % options.email)
-    elif options.password == "-":
-        password = sys.stdin.readline().strip()
-    else:
-        password = options.password
-    youtube = Youtube(DEVELOPER_KEY)
-    debug("Login to Youtube API: email='%s', password='%s'" %
-          (options.email, "*" * len(password)))
-    try:
-        youtube.login(options.email, password, captcha_token=options.captcha_token,
-                      captcha_response=options.captcha_response)
-    except gdata.service.BadAuthentication:
-        raise BadAuthentication("Authentication failed")
-    except gdata.service.CaptchaRequired:
-        token = youtube.service.captcha_token
-        message = [
-            "Captcha request: %s" % youtube.service.captcha_url,
-            "Re-run the command with: --captcha-token=%s --captcha-response=CAPTCHA" % token,
-        ]
-        raise CaptchaRequired("\n".join(message))
-
+            return
+        elif email_value != None:
+            # parse client login parameters
+            if options.create_playlist or options.add_to_playlist:
+                required_options = ["email", "password"]
+            else:
+                _check_video_file_argument_present(parser, args)                
+                required_options = ["email", "title", "category"]
+        
+            _detect_missing_args(parser, options, required_options)
+               
+            if options.password is None:
+                password = getpass.getpass("Password for account <%s>: " % options.email)
+            elif options.password == "-":
+                password = sys.stdin.readline().strip()
+            else:
+                password = options.password
+            youtube = Youtube(DEVELOPER_KEY, APP_NAME)
+            debug("Login to Youtube API: email='%s', password='%s'" %
+                  (options.email, password))
+            try:
+                youtube.login(options.email, password, captcha_token=options.captcha_token,
+                              captcha_response=options.captcha_response)
+            except gdata.service.BadAuthentication, (err):
+                print str(err)
+                raise BadAuthentication("Authentication failed [" + str(err) + "]")
+            except gdata.service.CaptchaRequired:
+                token = youtube.service.captcha_token
+                message = [
+                    "Captcha request: %s" % youtube.service.captcha_url,
+                    "Re-run the command with: --captcha-token=%s --captcha-response=CAPTCHA" % token,
+                ]
+                raise CaptchaRequired("\n".join(message))
+        elif refresh_token != None:
+            # parse oauth parameters
+            if options.create_playlist or options.add_to_playlist:
+                required_options = ["refresh_token"]
+            else:
+                _check_video_file_argument_present(parser, args)           
+                required_options = ["refresh_token", "title", "category"]
+                
+            _detect_missing_args(parser, options, required_options)
+            
+            youtube = Youtube(DEVELOPER_KEY, APP_NAME)
+            debug("login to Youtube API: refresh token='{0}', oauth client id='{1}' oauth client secret='{2}'".format(refresh_token, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET))
+            youtube.perform_oauth_login(refresh_token, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET)
+            
     if options.create_playlist:
         title, description, private = tosize(options.create_playlist.split("|", 2), 3)
         playlist_uri = youtube.create_playlist(title, description, (private == "1"))
@@ -443,5 +506,16 @@ def main_upload(arguments, output=sys.stdout):
             wait_processing(youtube, video_id)
         output.write(url + "\n")
 
+def _detect_missing_args(parser, options, required_options):
+    missing = [opt for opt in required_options if not getattr(options, opt)]
+    if missing:
+        parser.print_usage()
+        raise OptionsMissing("Some required option are missing: %s" % ", ".join(missing))
+
+def _check_video_file_argument_present(parser, args):
+    if not args:
+        parser.print_usage()
+        raise VideoArgumentMissing("Specify a video file to upload")
+            
 if __name__ == '__main__':
     sys.exit(catch_exceptions(EXIT_CODES, main_upload, sys.argv[1:]))
