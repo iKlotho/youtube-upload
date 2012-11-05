@@ -149,8 +149,6 @@ def post(url, files_params, extra_params, show_progressbar=True):
         bar = None
     body_container = StringIO.StringIO()
     headers_container = StringIO.StringIO()
-    c.setopt(c.WRITEFUNCTION, body_container.write)
-    c.setopt(c.HEADERFUNCTION, headers_container.write)
     c.perform()
     http_code = c.getinfo(pycurl.HTTP_CODE)
     c.close()
