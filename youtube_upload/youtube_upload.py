@@ -71,6 +71,7 @@ class OptionsMissing(Exception): pass
 class BadAuthentication(Exception): pass
 class CaptchaRequired(Exception): pass
 class ParseError(Exception): pass
+class VideoNotFound(Exception): pass
 class UnsuccessfulHTTPResponseCode(Exception): pass
 
 VERSION = "0.7.1"
@@ -85,6 +86,7 @@ EXIT_CODES = {
     InvalidCategory: 3,
     CaptchaRequired: 4, # retry with options --captcha-token and --captcha-response
     ParseError: 5,
+    VideoNotFound: 6,
     # Retryable
     UnsuccessfulHTTPResponseCode: 100,
 }
@@ -207,6 +209,23 @@ class Youtube:
         playlist_video_entry = self.service.AddPlaylistVideoEntryToPlaylist(
             playlist_uri, video_id, title, description)
         return playlist_video_entry
+
+    def delete_video_from_playlist(self, video_id, playlist_uri):
+        """Delete video from playlist."""
+        expected = r"http://gdata.youtube.com/feeds/api/playlists/"
+        if not re.match("^" + expected, playlist_uri):
+            raise ParseError("expecting playlist feed URL (%sID), but got '%s'" %
+                  (expected.decode("string-escape"), playlist_uri))
+        entries = self.service.GetYouTubePlaylistVideoFeed(playlist_uri).entry
+        
+        for entry in entries:
+            url, entry_id = get_entry_info(entry)
+            if video_id == entry_id:
+                playlist_video_entry_id = entry.id.text.split('/')[-1]
+              	self.service.DeletePlaylistVideoEntry(playlist_uri, playlist_video_entry_id)
+              	break
+        else:
+            raise VideoNotFound("Video %s not found in playlist %s" % (video_id, playlist_uri)) 
 
     def check_upload_status(self, video_id):
         """
@@ -340,6 +359,8 @@ def main_upload(arguments, output=sys.stdout):
     # Playlist options
     parser.add_option('', '--add-to-playlist', dest='add_to_playlist', type="string", default=None,
         metavar="URI", help='Add video(s) to an existing playlist')
+    parser.add_option('', '--delete-from-playlist', dest='delete_from_playlist', type="string", default=None,
+        metavar="URI", help='Delete video(s) from an existing playlist')
     parser.add_option('', '--wait-processing', dest='wait_processing', action="store_true",
         default=False, help='Wait until the video(s) has been processed')
 
@@ -354,7 +375,7 @@ def main_upload(arguments, output=sys.stdout):
     if options.get_categories:
         output.write(" ".join(Youtube.get_categories().keys()) + "\n")
         return
-    elif options.create_playlist or options.add_to_playlist:
+    elif options.create_playlist or options.add_to_playlist or options.delete_from_playlist:
         required_options = ["email", "password"]
     else:
         if not args:
@@ -395,12 +416,19 @@ def main_upload(arguments, output=sys.stdout):
         debug("Playlist created: %s" % playlist_uri)
         output.write(playlist_uri+"\n")
         return
-
-    if options.add_to_playlist:
+    elif options.add_to_playlist:
         for url in args:
             debug("Adding video (%s) to playlist: %s" % (url, options.add_to_playlist))
             video_id = get_video_id_from_url(url)
             youtube.add_video_to_playlist(video_id, options.add_to_playlist)
+        return
+    elif options.delete_from_playlist:
+        playlist = options.delete_from_playlist
+        for url in args:
+            video_id = get_video_id_from_url(url)
+            debug("delete video (%s) from playlist: %s; video-id: %s" % 
+              (url, playlist, video_id))
+            youtube.delete_video_from_playlist(video_id, playlist)
         return
 
     videos = args
