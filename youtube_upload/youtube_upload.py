@@ -91,6 +91,11 @@ EXIT_CODES = {
     UnsuccessfulHTTPResponseCode: 100,
 }
 
+def to_utf8(s):
+    """Re-encode string from the default system encoding to UTF-8."""
+    current = locale.getpreferredencoding()
+    return (s.decode(current).encode("UTF-8") if s and current != "UTF-8" else s)
+
 def debug(obj, fd=sys.stderr):
     """Write obj to standard error."""
     string = str(obj.encode(get_encoding(fd), "backslashreplace")
@@ -312,11 +317,13 @@ def wait_processing(youtube_obj, video_id):
         time.sleep(5)
 
 def upload_video(youtube, options, video_path, total_videos, index):
-    """Upload video with index (for split videos).""" 
-    namespace = dict(title=options.title, n=index+1, total=total_videos)
+    """Upload video with index (for split videos)."""
+    title = to_utf8(options.title)
+    description = to_utf8(options.description)
+    namespace = dict(title=title, n=index+1, total=total_videos)
     complete_title = (string.Template(options.title_template).substitute(**namespace)
-      if total_videos > 1 else options.title)
-    args = [video_path, complete_title, options.description,
+      if total_videos > 1 else title)
+    args = [video_path, complete_title, description,
             options.category, options.keywords]
     kwargs = {
       "private": options.private,
