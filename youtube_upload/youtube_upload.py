@@ -104,8 +104,8 @@ def debug(obj, fd=sys.stderr):
 
 def catch_exceptions(exit_codes, fun, *args, **kwargs):
     """
-    Wrap fun(*args, **kwargs) and catch raised exceptions specified in
-    the dictionary exit_codes ({ExceptionClass: exit_code_to_return}).
+    Catch exceptions on 'fun(*args, **kwargs)' and return the exit code specified 
+    in the 'exit_codes' dictionary. Returns 0 if no exception is raised.
     """
     try:
         fun(*args, **kwargs)
@@ -319,7 +319,7 @@ def wait_processing(youtube_obj, video_id):
 def upload_video(youtube, options, video_path, total_videos, index):
     """Upload video with index (for split videos)."""
     title = to_utf8(options.title)
-    description = to_utf8(options.description)
+    description = to_utf8(options.description).decode("string-escape")
     namespace = dict(title=title, n=index+1, total=total_videos)
     complete_title = (string.Template(options.title_template).substitute(**namespace)
       if total_videos > 1 else title)
