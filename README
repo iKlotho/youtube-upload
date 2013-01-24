@@ -47,6 +47,15 @@ $ youtube-upload --email=myemail@gmail.com --password=mypassword
 www.youtube.com/watch?v=pxzZ-fYjeYs
 }}}
 
+* Upload a video with a description from file (_description.txt_):
+
+{{{
+$ youtube-upload --email=myemail@gmail.com --password=mypassword 
+                 --title="A.S. Mutter" --description="$(< description.txt)" 
+                 --category=Music --keywords="mutter, beethoven" anne_sophie_mutter.flv
+www.youtube.com/watch?v=pxzZ-fYjeYs
+}}}
+
 * Upload the video using the Youtube API:
 
 {{{
@@ -96,6 +105,31 @@ The script uses pycurl by default (when available) to upload the video, but if y
 {{{
 $ youtube-upload --get-upload-form-info [OPTIONS] | bash examples/upload_with_curl.sh --limit-rate 100k
 }}}
+
+* Upload a non-public (private/unlisted) video:
+
+{{{
+$ youtube-upload --private ...
+}}}
+
+{{{
+$ youtube-upload --unlisted ...
+}}}
+
+* Use a HTTP proxy
+
+Set environment variables *http_proxy* and *https_proxy*:
+
+{{{
+$ export http_proxy=http://user:password@host:port
+$ export https_proxy=http://user:password@host:port
+$ youtube-upload ....
+}}}
+
+
+= Caveats =
+
+Before you upload a video using the script, do it manually to make sure everything is ok (you have a valid user/password and an associated channel). See issue57 for more details.
 
 = Feedback =
 
