@@ -214,6 +214,13 @@ class Youtube:
             playlist_uri, video_id, title, description)
         return playlist_video_entry
 
+    def update_description(self, entry, description):
+        """
+        Change description of a video
+        """
+        entry.media.description.text = description
+        return self.service.UpdateVideoEntry(entry)
+
     def delete_video_from_playlist(self, video_id, playlist_uri):
         """Delete video from playlist."""
         expected = r"http://gdata.youtube.com/feeds/api/playlists/"
@@ -364,7 +371,7 @@ def run_main(options, args, output=sys.stdout):
     if options.get_categories:
         output.write(" ".join(Youtube.get_categories().keys()) + "\n")
         return
-    elif options.create_playlist or options.add_to_playlist or options.delete_from_playlist:
+    elif options.create_playlist or options.add_to_playlist or options.delete_from_playlist or options.update_desc:
         required_options = ["email", "password"]
     else:
         if not args:
@@ -404,6 +411,14 @@ def run_main(options, args, output=sys.stdout):
         playlist_uri = youtube.create_playlist(title, description, (private == "1"))
         debug("Playlist created: %s" % playlist_uri)
         output.write(playlist_uri+"\n")
+
+    elif options.update_desc:
+        video_id = get_video_id_from_url(options.update_desc)
+        entry = youtube.service.GetYouTubeVideoEntry('http://gdata.youtube.com/feeds/api/users/default/uploads/%s' % video_id)
+         
+        updated = youtube.update_description(entry, options.description)
+         
+        output.write(options.update_desc+"\n")
     elif options.add_to_playlist:
         for url in args:
             debug("Adding video (%s) to playlist: %s" % (url, options.add_to_playlist))
@@ -459,6 +474,8 @@ def main(arguments):
         action="store_true", default=False, help='Set uploaded video(s) as unlisted')
     parser.add_option('', '--location', dest='location', type="string", default=None,
         metavar="LAT,LON", help='Video(s) location (lat, lon). example: "43.3,5.42"')
+    parser.add_option('', '--update-description', dest='update_desc', type="string",
+        default=None, metavar="STRING", help='Update video description')
 
     # Upload options
     parser.add_option('', '--api-upload', dest='api_upload',
