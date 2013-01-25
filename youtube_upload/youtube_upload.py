@@ -214,11 +214,14 @@ class Youtube:
             playlist_uri, video_id, title, description)
         return playlist_video_entry
 
-    def update_description(self, entry, description):
-        """
-        Change description of a video
-        """
-        entry.media.description.text = description
+    def update_metadata(self, url, title, description):
+        """Change metadata of a video."""
+        entry = self._get_feed_from_url(url)
+        if title:
+            entry.media.title = gdata.media.Title(text=title)
+        if description:
+            entry.media.description = \
+                gdata.media.Description(description_type='plain', text=description) 
         return self.service.UpdateVideoEntry(entry)
 
     def delete_video_from_playlist(self, video_id, playlist_uri):
@@ -233,8 +236,8 @@ class Youtube:
             url, entry_id = get_entry_info(entry)
             if video_id == entry_id:
                 playlist_video_entry_id = entry.id.text.split('/')[-1]
-              	self.service.DeletePlaylistVideoEntry(playlist_uri, playlist_video_entry_id)
-              	break
+                self.service.DeletePlaylistVideoEntry(playlist_uri, playlist_video_entry_id)
+                break
         else:
             raise VideoNotFound("Video %s not found in playlist %s" % (video_id, playlist_uri)) 
 
@@ -245,6 +248,11 @@ class Youtube:
         Return None if video is processed, and a pair (status, message) otherwise.
         """
         return self.service.CheckUploadStatus(video_id=video_id)
+
+    def _get_feed_from_url(self, url):
+        template = 'http://gdata.youtube.com/feeds/api/users/default/uploads/%s' 
+        video_id = get_video_id_from_url(url)
+        return self.service.GetYouTubeVideoEntry(template % video_id)
 
     def _create_video_entry(self, title, description, category, keywords=None,
             location=None, private=False, unlisted=False):
@@ -366,13 +374,14 @@ def upload_video(youtube, options, video_path, total_videos, index):
         wait_processing(youtube, video_id)
     return url
 
-def run_main(options, args, output=sys.stdout):
+def run_main(parser, options, args, output=sys.stdout):
     """Run the main scripts from the parsed options/args."""
     if options.get_categories:
         output.write(" ".join(Youtube.get_categories().keys()) + "\n")
         return
-    elif options.create_playlist or options.add_to_playlist or options.delete_from_playlist or options.update_desc:
-        required_options = ["email", "password"]
+    elif (options.create_playlist or options.add_to_playlist or 
+         options.delete_from_playlist or options.update_metadata):
+        required_options = ["email"]
     else:
         if not args:
             parser.print_usage()
@@ -411,14 +420,13 @@ def run_main(options, args, output=sys.stdout):
         playlist_uri = youtube.create_playlist(title, description, (private == "1"))
         debug("Playlist created: %s" % playlist_uri)
         output.write(playlist_uri+"\n")
-
-    elif options.update_desc:
-        video_id = get_video_id_from_url(options.update_desc)
-        entry = youtube.service.GetYouTubeVideoEntry('http://gdata.youtube.com/feeds/api/users/default/uploads/%s' % video_id)
-         
-        updated = youtube.update_description(entry, options.description)
-         
-        output.write(options.update_desc+"\n")
+    elif options.update_metadata:
+        if not args:
+            parser.print_usage()
+            raise VideoArgumentMissing("Specify a video URL to upload")
+        url = args[0]            
+        updated = youtube.update_metadata(url, options.title, options.description)
+        debug("Video metadata updated: %s" % url)
     elif options.add_to_playlist:
         for url in args:
             debug("Adding video (%s) to playlist: %s" % (url, options.add_to_playlist))
@@ -474,8 +482,8 @@ def main(arguments):
         action="store_true", default=False, help='Set uploaded video(s) as unlisted')
     parser.add_option('', '--location', dest='location', type="string", default=None,
         metavar="LAT,LON", help='Video(s) location (lat, lon). example: "43.3,5.42"')
-    parser.add_option('', '--update-description', dest='update_desc', type="string",
-        default=None, metavar="STRING", help='Update video description')
+    parser.add_option('', '--update-metadata', dest='update_metadata', 
+        action="store_true", default=False, help='Update video metadata (title/description)')
 
     # Upload options
     parser.add_option('', '--api-upload', dest='api_upload',
@@ -498,7 +506,7 @@ def main(arguments):
       metavar="STRING", help='Captcha response')
 
     options, args = parser.parse_args(arguments)
-    run_main(options, args)
+    run_main(parser, options, args)
 
 if __name__ == '__main__':
     sys.exit(catch_exceptions(EXIT_CODES, main, sys.argv[1:]))

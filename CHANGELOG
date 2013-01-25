@@ -2,6 +2,7 @@ youtube-upload (0.7.1+svn) stable; urgency=low
 
   * Change --email option help message.
   * Allow escaped chars in description
+  * Add -update-metadata (basic support: title/description)
 
  --  <tokland@gmail.com>  Wed, 31 May 2012 18:58:44 +0200
 
