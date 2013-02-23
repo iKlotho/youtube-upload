@@ -1,4 +1,4 @@
-youtube-upload (0.7.1+svn) stable; urgency=low
+youtube-upload (0.7.2) stable; urgency=low
 
   * Change --email option help message.
   * Allow escaped chars in description
