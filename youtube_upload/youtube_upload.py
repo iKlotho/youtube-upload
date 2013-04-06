@@ -334,7 +334,7 @@ def wait_processing(youtube_obj, video_id):
 def upload_video(youtube, options, video_path, total_videos, index):
     """Upload video with index (for split videos)."""
     title = to_utf8(options.title)
-    description = to_utf8(options.description).decode("string-escape")
+    description = to_utf8(options.description or "").decode("string-escape")
     namespace = dict(title=title, n=index+1, total=total_videos)
     complete_title = (string.Template(options.title_template).substitute(**namespace)
       if total_videos > 1 else title)
