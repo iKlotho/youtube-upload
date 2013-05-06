@@ -1,3 +1,9 @@
+youtube-upload (0.7.2+svn) stable; urgency=low
+
+  * issue107: add options --hide-progressbar
+
+ --  <tokland@gmail.com>  Mon, 06 May 2013 14:20:04 +0200
+
 youtube-upload (0.7.2) stable; urgency=low
 
   * Change --email option help message.

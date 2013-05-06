@@ -154,6 +154,9 @@ def post(url, files_params, extra_params, show_progressbar=True):
     elif show_progressbar:
         debug("Install python-progressbar to see a nice progress bar")
         bar = None
+    else:
+        bar = None
+        
     body_container = StringIO.StringIO()
     headers_container = StringIO.StringIO()
     c.setopt(c.WRITEFUNCTION, body_container.write)
@@ -161,6 +164,7 @@ def post(url, files_params, extra_params, show_progressbar=True):
     c.perform()
     http_code = c.getinfo(pycurl.HTTP_CODE)
     c.close()
+    
     if bar:
         bar.finish()
     headers = dict([s.strip() for s in line.split(":", 1)] for line in
@@ -359,8 +363,9 @@ def upload_video(youtube, options, video_path, total_videos, index):
         data = youtube.get_upload_form_data(*args, **kwargs)
         entry = data["entry"]
         debug("Start upload using a HTTP post: %s" % video_path)
-        http_code, headers, body = \
-            post(data["post_url"], {"file": video_path}, {"token": data["token"]})
+        http_code, headers, body = post(data["post_url"], 
+            {"file": video_path}, {"token": data["token"]}, 
+            show_progressbar=not(options.hide_progressbar))
         if http_code != 302:
             raise UnsuccessfulHTTPResponseCode(
                 "HTTP code on upload: %d (expected 302)" % http_code)
@@ -490,6 +495,8 @@ def main(arguments):
         action="store_true", default=False, help="Use the API upload instead of pycurl")
     parser.add_option('', '--get-upload-form-info', dest='get_upload_form_data',
         action="store_true", default=False, help="Don't upload, get the form info (PATH, TOKEN, URL)")
+    parser.add_option('', '--hide-progressbar', dest='hide_progressbar',
+        action="store_true", default=False, help="Hide progressbar on uploads")
 
     # Playlist options
     parser.add_option('', '--add-to-playlist', dest='add_to_playlist', type="string", default=None,
