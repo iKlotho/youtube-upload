@@ -1,6 +1,8 @@
-youtube-upload (0.7.2+svn) stable; urgency=low
+youtube-upload (0.7.3) stable; urgency=low
 
+  * issue101: don't fail when no description is provided 
   * issue107: add options --hide-progressbar
+  
 
  --  <tokland@gmail.com>  Mon, 06 May 2013 14:20:04 +0200
 

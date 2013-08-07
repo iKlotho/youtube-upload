@@ -74,7 +74,7 @@ class ParseError(Exception): pass
 class VideoNotFound(Exception): pass
 class UnsuccessfulHTTPResponseCode(Exception): pass
 
-VERSION = "0.7.2"
+VERSION = "0.7.3"
 DEVELOPER_KEY = "AI39si7iJ5TSVP3U_j4g3GGNZeI6uJl6oPLMxiyMst24zo1FEgnLzcG4i" + \
   "SE0t2pLvi-O03cW918xz9JFaf_Hn-XwRTTK7i1Img"
 
@@ -362,7 +362,7 @@ def upload_video(youtube, options, video_path, total_videos, index):
     else: # upload with curl
         data = youtube.get_upload_form_data(*args, **kwargs)
         entry = data["entry"]
-        debug("Start upload using a HTTP post: %s" % video_path)
+        debug("Start upload using a HTTP post: %s -> %s" % (video_path, data["post_url"]))
         http_code, headers, body = post(data["post_url"], 
             {"file": video_path}, {"token": data["token"]}, 
             show_progressbar=not(options.hide_progressbar))
