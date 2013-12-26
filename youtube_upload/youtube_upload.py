@@ -259,7 +259,8 @@ class Youtube:
         return self.service.GetYouTubeVideoEntry(template % video_id)
 
     def _create_video_entry(self, title, description, category, keywords=None,
-            location=None, private=False, unlisted=False):
+            location=None, private=False, unlisted=False, recorded=None, 
+            nocomments=False, noratings=False):
         self.categories = self.get_categories()
         if category not in self.categories:
             valid = " ".join(self.categories.keys())
@@ -274,18 +275,38 @@ class Youtube:
                 scheme=self.CATEGORIES_SCHEME),
             private=(gdata.media.Private() if private else None),
             player=None)
+        
         if location:
             where = gdata.geo.Where()
             where.set_location(location)
         else:
             where = None
-        kwargs = {
-            "namespace": YOUTUBE_NAMESPACE,
-            "attributes": {'action': 'list', 'permission': 'denied'},
-        }
-        extension = ([ExtensionElement('accessControl', **kwargs)] if unlisted else None)
+        
+        extensions = []
+        
+        if unlisted:
+            list_denied = {
+                "namespace": YOUTUBE_NAMESPACE,
+                "attributes": {'action': 'list', 'permission': 'denied'},
+            }
+            extensions.append(ExtensionElement('accessControl', **list_denied))
+
+        if nocomments:
+            comment_denied = {
+                "namespace": YOUTUBE_NAMESPACE,
+                "attributes": {'action': 'comment', 'permission': 'denied'},
+            }
+            extensions.append(ExtensionElement('accessControl', **comment_denied))
+
+        if noratings:
+            rate_denied = {
+                "namespace": YOUTUBE_NAMESPACE,
+                "attributes": {'action': 'rate', 'permission': 'denied'},
+            }
+            extensions.append(ExtensionElement('accessControl', **rate_denied))
+        when = (gdata.youtube.Recorded(None, None, recorded) if recorded else None)
         return gdata.youtube.YouTubeVideoEntry(media=media_group, geo=where,
-            extension_elements=extension)
+            recorded=when, extension_elements=extensions)
 
     @classmethod
     def get_categories(cls):
@@ -348,8 +369,10 @@ def upload_video(youtube, options, video_path, total_videos, index):
       "private": options.private,
       "location": parse_location(options.location),
       "unlisted": options.unlisted,
+      "recorded": options.recorded,
+      "nocomments": options.nocomments,
+      "noratings": options.noratings,
     }
-
     if options.get_upload_form_data:
         data = youtube.get_upload_form_data(*args, **kwargs)
         return "\n".join([video_path, data["token"], data["post_url"]])
@@ -485,8 +508,14 @@ def main(arguments):
         action="store_true", default=False, help='Set uploaded video(s) as private')
     parser.add_option('', '--unlisted', dest='unlisted',
         action="store_true", default=False, help='Set uploaded video(s) as unlisted')
+    parser.add_option('', '--nocomments', dest='nocomments',
+        action="store_true", default=False, help='Disable comments for video(s)')
+    parser.add_option('', '--noratings', dest='noratings',
+        action="store_true", default=False, help='Disable ratings for video(s)')
     parser.add_option('', '--location', dest='location', type="string", default=None,
         metavar="LAT,LON", help='Video(s) location (lat, lon). example: "43.3,5.42"')
+    parser.add_option('', '--recorded', dest='recorded', type="string", default=None,
+        metavar="STRING", help='Video(s) recording time (YYYY-MM-DD). example: "2013-12-29"')
     parser.add_option('', '--update-metadata', dest='update_metadata', 
         action="store_true", default=False, help='Update video metadata (title/description)')
 
@@ -517,3 +546,4 @@ def main(arguments):
 
 if __name__ == '__main__':
     sys.exit(catch_exceptions(EXIT_CODES, main, sys.argv[1:]))
+
