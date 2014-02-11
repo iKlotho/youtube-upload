@@ -49,8 +49,8 @@ main() {
     debug "$VIDEO: from position $OFFSET take $CHUNK_DURATION seconds"
     PADDED_INDEX=$(printf '%03d' $INDEX)
     OUTPUT_FILE="${BASENAME}.part${PADDED_INDEX}.mkv"
-    ffmpeg -v 1 -sameq -vcodec copy -acodec copy "$@" \
-           -i "$VIDEO" -ss $OFFSET -t $CHUNK_DURATION -y "$OUTPUT_FILE" </dev/null 
+    ffmpeg -i "$VIDEO" -vcodec copy -acodec copy "$@" \
+           -ss $OFFSET -t $CHUNK_DURATION -y "$OUTPUT_FILE" </dev/null 
     echo "$OUTPUT_FILE"
   done
 }
