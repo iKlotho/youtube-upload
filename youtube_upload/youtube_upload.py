@@ -218,14 +218,16 @@ class Youtube:
             playlist_uri, video_id, title, description)
         return playlist_video_entry
 
-    def update_metadata(self, url, title, description):
+    def update_metadata(self, url, title, description, keywords):
         """Change metadata of a video."""
         entry = self._get_feed_from_url(url)
         if title:
             entry.media.title = gdata.media.Title(text=title)
         if description:
             entry.media.description = \
-                gdata.media.Description(description_type='plain', text=description) 
+                gdata.media.Description(description_type='plain', text=description)
+        if keywords:
+          entry.media.keywords = gdata.media.Keywords(text=keywords)
         return self.service.UpdateVideoEntry(entry)
 
     def delete_video_from_playlist(self, video_id, playlist_uri):
@@ -453,7 +455,7 @@ def run_main(parser, options, args, output=sys.stdout):
             parser.print_usage()
             raise VideoArgumentMissing("Specify a video URL to upload")
         url = args[0]            
-        updated = youtube.update_metadata(url, options.title, options.description)
+        updated = youtube.update_metadata(url, options.title, options.description, options.keywords)
         debug("Video metadata updated: %s" % url)
     elif options.add_to_playlist:
         for url in args:
