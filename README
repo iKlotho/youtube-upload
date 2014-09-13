@@ -35,7 +35,6 @@ $ cd youtube-upload-VERSION
 $ python youtube_upload/youtube_upload.py ...
 }}}
 
-
 = Usage examples =
 
 * Upload a video:
@@ -116,6 +115,12 @@ $ youtube-upload --private ...
 $ youtube-upload --unlisted ...
 }}}
 
+* Get password from standard input
+
+{{{
+$ cat password.txt | youtube-upload -p - ....
+}}}
+
 * Use a HTTP proxy
 
 Set environment variables *http_proxy* and *https_proxy*:
@@ -124,8 +129,16 @@ Set environment variables *http_proxy* and *https_proxy*:
 $ export http_proxy=http://user:password@host:port
 $ export https_proxy=http://user:password@host:port
 $ youtube-upload ....
+
 }}}
 
+* Update metadata (title or description).
+
+Set new title for video:
+
+{{{
+$ youtube-upload --email=EMAIL --password=PASSWORD --update-metadata --title "new title" www.youtube.com/watch?v=pxzZ-fYjeYs
+}}}
 
 = Caveats =
 
@@ -136,6 +149,16 @@ Before you upload a video using the script, do it manually to make sure everythi
 
 If you are using [https://support.google.com/accounts/answer/180744?hl=en two-step verification] issue an application-specific password and use it in the script as if it was your real password. See [https://code.google.com/p/youtube-upload/issues/detail?id=111 issue111] for more details.
 
+== Sign in using App Passwords ==
+
+An App password is a 16-digit passcode that gives an app or device permission to access your Google Account. If you use 2-Step-Verification and are seeing a “password incorrect” error when trying to access your Google Account, an App password may solve the problem. 
+
+https://support.google.com/accounts/answer/185833?hl=en
+
+== Progressbar ==
+
+You need both packages *python-progressbar* and *pycurl* installed to see the progress bar when uploading a video.
+
 = Feedback =
 
-Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] instead to report bugs or suggest improvements.
+Use the [http://code.google.com/p/youtube-upload/issues/ issues tracker] to report bugs or suggest improvements.
