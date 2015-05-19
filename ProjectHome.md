@@ -1,0 +1,1 @@
+THIS PROJECT IS DEPRECATED. USE https://github.com/tokland/youtube-upload
